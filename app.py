@@ -359,28 +359,9 @@ st.markdown("""
         direction: rtl;
     }
     
-    .api-status-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #F0F0F0;
-        direction: rtl;
-    }
+
     
-    .api-status-item:last-child {
-        border-bottom: none;
-    }
-    
-    .api-status-label {
-        color: #2C3E50;
-        font-weight: 500;
-    }
-    
-    .api-status-value {
-        color: #4A90E2;
-        font-weight: 600;
-    }
+
     
     /* File List */
     .file-item {
@@ -770,22 +751,24 @@ def create_header():
     </div>
     """, unsafe_allow_html=True)
 
-def create_api_status_sidebar():
-    """Create clean API status in sidebar"""
-    with st.sidebar:
-        st.markdown(f"""
-        <div class="api-status-card">
-            <h3 style="color: #2C3E50; margin-bottom: 1rem;">🔗 وضعیت API</h3>
-            <div class="api-status-item">
-                <span class="api-status-label">تعداد کلیدها:</span>
-                <span class="api-status-value">{len(api_keys)}</span>
-            </div>
-            <div class="api-status-item">
-                <span class="api-status-label">مدل:</span>
-                <span class="api-status-value">Gemini 2.5 Pro</span>
-            </div>            
-        </div>
-        """, unsafe_allow_html=True)
+# def create_api_status_sidebar():
+#     """Create clean API status in sidebar"""
+#     with st.sidebar:
+#         st.markdown(f"""
+#         <div class="api-status-card">
+#             <h3 style="color: #2C3E50; margin-bottom: 1rem;">🔗 وضعیت API</h3>
+#             <div class="api-status-item">
+#                 <span class="api-status-label">تعداد کلیدها:</span>
+#                 <span class="api-status-value">{len(api_keys)}</span>
+#             </div>
+#             <div class="api-status-item">
+#                 <span class="api-status-label">مدل:</span>
+#                 <span class="api-status-value">Gemini 2.5 Pro</span>
+#             </div>            
+
+
+#         </div>
+#         """, unsafe_allow_html=True)
 
 def create_file_upload_section():
     """Create user-friendly file upload section"""
@@ -1296,7 +1279,7 @@ def main():
     create_header()
     
     # Create sidebar panels
-    create_api_status_sidebar()
+    # create_api_status_sidebar()
     create_info_panel()
     
     # Main content
@@ -1354,4 +1337,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
