@@ -24,33 +24,108 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Clean and professional CSS
+# Enhanced CSS with RTL support and centered metrics
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    @font-face {
+        font-family: 'B Mitra';
+        src: url('data:font/woff2;base64,') format('woff2');
+        font-display: swap;
+    }
     
     * {
-        font-family: 'Inter', sans-serif;
+        font-family: 'B Mitra', 'Tahoma', sans-serif !important;
+        direction: rtl !important;
+        text-align: right !important;
     }
     
     .main {
         background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         min-height: 100vh;
+        direction: rtl;
     }
     
     .stApp {
         background: transparent;
+        direction: rtl;
+    }
+    
+    /* Fix Streamlit RTL issues */
+    .stSidebar {
+        direction: rtl !important;
+    }
+    
+    .stSidebar > div {
+        direction: rtl !important;
+    }
+    
+    .stExpander {
+        direction: rtl !important;
+    }
+    
+    .stExpander > div {
+        direction: rtl !important;
+    }
+    
+    .stExpander summary {
+        direction: rtl !important;
+        text-align: right !important;
+    }
+    
+    .stExpander summary svg {
+        margin-left: 0.5rem !important;
+        margin-right: 0 !important;
+    }
+    
+    /* Fix keyboard_double_array bug */
+    .stExpander details summary::before {
+        content: "" !important;
+    }
+    
+    .stExpander details summary {
+        list-style: none !important;
+    }
+    
+    .stExpander details summary::-webkit-details-marker {
+        display: none !important;
+    }
+    
+    .stSelectbox label {
+        direction: rtl !important;
+        text-align: right !important;
+    }
+    
+    .stRadio label {
+        direction: rtl !important;
+        text-align: right !important;
+    }
+    
+    .stRadio > div {
+        direction: rtl !important;
+        flex-direction: row-reverse !important;
+        gap: 2rem;
+    }
+    
+    .stFileUploader label {
+        direction: rtl !important;
+        text-align: right !important;
     }
     
     /* Header Styles */
-    .main-header {
+   .main-header {
         background: white;
         padding: 2rem;
         border-radius: 15px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         margin-bottom: 2rem;
-        text-align: center;
-        border-left: 5px solid #4A90E2;
+        text-align: center !important;
+        border-right: 5px solid #4A90E2;
+        direction: rtl;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
     
     .main-title {
@@ -59,13 +134,21 @@ st.markdown("""
         color: #2C3E50;
         margin: 0;
         margin-bottom: 0.5rem;
+        text-align: center !important;
+        display: block;
+        width: 100%;
+        direction: rtl;
     }
     
-    .main-subtitle {
-        font-size: 1.1rem;
-        color: #7F8C8D;
-        margin: 0;
+
+    
+    /* Force center alignment for header content */
+    .main-header * {
+        text-align: center !important;
+        margin-left: auto;
+        margin-right: auto;
     }
+
     
     /* Card Styles */
     .content-card {
@@ -75,6 +158,7 @@ st.markdown("""
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         margin-bottom: 2rem;
         border: 1px solid #E8E8E8;
+        direction: rtl;
     }
     
     .section-title {
@@ -85,21 +169,23 @@ st.markdown("""
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        text-align: right;
+        direction: rtl;
     }
     
-    /* Upload Area */
+    /* User-friendly Upload Area - Reduced height and no border */
     .upload-area {
-        border: 2px dashed #4A90E2;
-        border-radius: 12px;
-        padding: 3rem 2rem;
-        text-align: center;
         background: #F8FBFF;
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        text-align: center;
         transition: all 0.3s ease;
         margin: 1rem 0;
+        border: none;
+        min-height: auto;
     }
     
     .upload-area:hover {
-        border-color: #357ABD;
         background: #F0F8FF;
     }
     
@@ -108,18 +194,21 @@ st.markdown("""
         font-size: 1.1rem;
         font-weight: 500;
         margin-bottom: 0.5rem;
+        text-align: center;
     }
     
     .upload-subtext {
         color: #7F8C8D;
         font-size: 0.9rem;
+        text-align: center;
     }
     
-    /* Metrics */
+    /* Centered Metrics */
     .metric-container {
         display: flex;
         gap: 1rem;
         margin: 1.5rem 0;
+        direction: rtl;
     }
     
     .metric-card {
@@ -128,19 +217,46 @@ st.markdown("""
         color: white;
         padding: 1.5rem;
         border-radius: 12px;
-        text-align: center;
         box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center !important;
     }
     
     .metric-title {
         font-size: 0.9rem;
         opacity: 0.9;
         margin-bottom: 0.5rem;
+        text-align: center !important;
+        display: block;
+        width: 100%;
     }
     
     .metric-value {
         font-size: 2rem;
         font-weight: 700;
+        text-align: center !important;
+        display: block;
+        width: 100%;
+    }
+    
+    /* Risk Level Background Colors */
+    .risk-low {
+        background: linear-gradient(135deg, #27AE60, #2ECC71) !important;
+    }
+    
+    .risk-medium {
+        background: linear-gradient(135deg, #F39C12, #E67E22) !important;
+    }
+    
+    .risk-high {
+        background: linear-gradient(135deg, #E67E22, #D35400) !important;
+    }
+    
+    .risk-critical {
+        background: linear-gradient(135deg, #E74C3C, #C0392B) !important;
     }
     
     /* Status Messages */
@@ -151,6 +267,8 @@ st.markdown("""
         border-radius: 8px;
         margin: 0.5rem 0;
         font-weight: 500;
+        direction: rtl;
+        text-align: right;
     }
     
     .status-error {
@@ -160,6 +278,8 @@ st.markdown("""
         border-radius: 8px;
         margin: 0.5rem 0;
         font-weight: 500;
+        direction: rtl;
+        text-align: right;
     }
     
     .status-warning {
@@ -169,6 +289,8 @@ st.markdown("""
         border-radius: 8px;
         margin: 0.5rem 0;
         font-weight: 500;
+        direction: rtl;
+        text-align: right;
     }
     
     .status-info {
@@ -178,6 +300,8 @@ st.markdown("""
         border-radius: 8px;
         margin: 0.5rem 0;
         font-weight: 500;
+        direction: rtl;
+        text-align: right;
     }
     
     /* Progress Bar */
@@ -187,6 +311,7 @@ st.markdown("""
         padding: 1.5rem;
         margin: 1rem 0;
         border: 1px solid #E9ECEF;
+        direction: rtl;
     }
     
     /* Buttons */
@@ -201,6 +326,7 @@ st.markdown("""
         transition: all 0.3s ease;
         box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
         width: 100%;
+        font-family: 'B Mitra', 'Tahoma', sans-serif !important;
     }
     
     .stButton > button:hover {
@@ -209,11 +335,18 @@ st.markdown("""
         box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
     }
     
+    /* Button spacing from cards */
+    .stButton {
+        margin-top: 2rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
     /* Sidebar */
     .sidebar .stSelectbox > div > div {
         background: white;
         border: 1px solid #E8E8E8;
         border-radius: 8px;
+        direction: rtl;
     }
     
     .api-status-card {
@@ -222,7 +355,8 @@ st.markdown("""
         border-radius: 12px;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
         margin-bottom: 1rem;
-        border-left: 4px solid #4A90E2;
+        border-right: 4px solid #4A90E2;
+        direction: rtl;
     }
     
     .api-status-item {
@@ -231,6 +365,7 @@ st.markdown("""
         align-items: center;
         padding: 0.5rem 0;
         border-bottom: 1px solid #F0F0F0;
+        direction: rtl;
     }
     
     .api-status-item:last-child {
@@ -253,10 +388,11 @@ st.markdown("""
         padding: 0.75rem 1rem;
         border-radius: 8px;
         margin: 0.5rem 0;
-        border-left: 3px solid #4A90E2;
+        border-right: 3px solid #4A90E2;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        direction: rtl;
     }
     
     .file-name {
@@ -277,6 +413,7 @@ st.markdown("""
         margin: 1rem 0;
         border: 1px solid #E8E8E8;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        direction: rtl;
     }
     
     .company-info {
@@ -284,13 +421,16 @@ st.markdown("""
         grid-template-columns: 1fr 1fr;
         gap: 1rem;
         margin-top: 1rem;
+        direction: rtl;
     }
     
     .info-item {
         background: #F8F9FA;
         padding: 0.75rem;
         border-radius: 6px;
-        border-left: 3px solid #4A90E2;
+        border-right: 3px solid #4A90E2;
+        direction: rtl;
+        text-align: center;
     }
     
     .info-label {
@@ -299,6 +439,7 @@ st.markdown("""
         font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        text-align: center !important;
     }
     
     .info-value {
@@ -306,12 +447,7 @@ st.markdown("""
         color: #2C3E50;
         font-weight: 600;
         margin-top: 0.25rem;
-    }
-    
-    /* Radio buttons */
-    .stRadio > div {
-        flex-direction: row;
-        gap: 2rem;
+        text-align: center !important;
     }
     
     /* Remove hover tooltips */
@@ -328,24 +464,83 @@ st.markdown("""
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* RTL Support */
-    .rtl {
-        direction: rtl;
-        text-align: right;
+    /* Fix for file uploader */
+    .stFileUploader > div {
+        direction: rtl !important;
+    }
+    
+    .stFileUploader button {
+        font-family: 'B Mitra', 'Tahoma', sans-serif !important;
+    }
+    
+    /* Remove file uploader border and dashes */
+    .stFileUploader > div > div {
+        border: none !important;
+        background: #F8FBFF !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        min-height: auto !important;
+    }
+    
+    .stFileUploader > div > div > div {
+        border: none !important;
+        border-style: none !important;
+    }
+    
+    /* Fix columns RTL */
+    .stColumn {
+        direction: rtl !important;
+    }
+    
+    /* Fix Streamlit metrics to center */
+    .stMetric {
+        text-align: center !important;
+    }
+    
+    .stMetric > div {
+        text-align: center !important;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .stMetric [data-testid="metric-container"] {
+        text-align: center !important;
+        justify-content: center !important;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .stMetric [data-testid="metric-container"] > div {
+        text-align: center !important;
+        width: 100%;
+    }
+    
+    /* Force center alignment for metric labels and values */
+    .stMetric label {
+        text-align: center !important;
+        justify-content: center !important;
+        display: flex;
+        width: 100%;
+    }
+    
+    .stMetric [data-testid="metric-value"] {
+        text-align: center !important;
+        justify-content: center !important;
+        display: flex;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# API Configuration
-# API Configuration
-# proxy_url = "http://185.173.168.31:22525"
+# proxy_url = "http://---.---.---.--:2---5"
 # os.environ['HTTP_PROXY'] = proxy_url
 # os.environ['HTTPS_PROXY'] = proxy_url
 
 api_keys = [
-    "AIzaSyAbWehhzebrPM3wLSh7DHNbrZ9JVOTfHWw",
-    "AIzaSyBHBGLi-Uq-X4aEQiz7Epwy8sjnj3jY7Yo",
-    "AIzaSyBeLYGH4JS-fPHYdqKgUPotV2dpGZYZ2to"
+    "AIzaSyAo5oFZqsTRkUIqJRjoefWINWpbwPHbEn8",
+    "AIzaSyDyj1DlOLAlbKzTLFP2tz95TcIca4oV0Vg",
 ]
 
 api_key_cycler = cycle(api_keys)
@@ -536,8 +731,8 @@ class FinancialAnalyzer:
             "required": ["تحلیل_جامع_گزارش_حسابرسی"]
         }
     
-    def extract_table_from_page(self, page_pdf):
-        """Extract analysis from PDF using Gemini API with rotation"""
+    def extract_table_from_page(self, file_content):
+        """Extract analysis from PDF using Gemini API with rotation - Direct processing without temp files"""
         client = get_client()
         
         prompt = """
@@ -548,7 +743,7 @@ class FinancialAnalyzer:
         response = client.models.generate_content(
             model="gemini-2.5-pro",
             contents=[
-                types.Part.from_bytes(data=page_pdf.read_bytes(), mime_type="application/pdf"),
+                types.Part.from_bytes(data=file_content, mime_type="application/pdf"),
                 prompt
             ],
             config={
@@ -567,37 +762,37 @@ class FinancialAnalyzer:
         return data
 
 def create_header():
-    """Create clean header"""
+    """Create clean RTL header"""
     st.markdown("""
     <div class="main-header">
-        <h1 class="main-title">📊 AI Financial Analyzer</h1>
-        <p class="main-subtitle">تحلیل هوشمند گزارش‌های مالی با قدرت Gemini 2.5 Pro</p>
+        <h1 class="main-title">📊 تحلیلگر هوشمند صورتهای مالی</h1>
+        
     </div>
     """, unsafe_allow_html=True)
 
 def create_api_status_sidebar():
     """Create clean API status in sidebar"""
     with st.sidebar:
-        st.markdown("""
+        st.markdown(f"""
         <div class="api-status-card">
             <h3 style="color: #2C3E50; margin-bottom: 1rem;">🔗 وضعیت API</h3>
             <div class="api-status-item">
                 <span class="api-status-label">تعداد کلیدها:</span>
-                <span class="api-status-value">{}</span>
+                <span class="api-status-value">{len(api_keys)}</span>
             </div>
             <div class="api-status-item">
                 <span class="api-status-label">پروکسی:</span>
-                <span class="api-status-value">فعال</span>
+                <span class="api-status-value">غیرفعال</span>
             </div>
             <div class="api-status-item">
                 <span class="api-status-label">مدل:</span>
                 <span class="api-status-value">Gemini 2.5 Pro</span>
             </div>
         </div>
-        """.format(len(api_keys)), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
 def create_file_upload_section():
-    """Create clean file upload section"""
+    """Create user-friendly file upload section"""
     st.markdown("""
     <div class="content-card">
         <h2 class="section-title">📁 بارگذاری فایل‌ها</h2>
@@ -615,7 +810,7 @@ def create_file_upload_section():
     if upload_method == "فایل‌های جداگانه":
         st.markdown("""
         <div class="upload-area">
-            <div class="upload-text">فایل‌های PDF خود را اینجا بارگذاری کنید</div>
+            <div class="upload-text">📄 فایل های PDF خود را اینجا بارگذاری کنید</div>
             <div class="upload-subtext">فرمت‌های پشتیبانی شده: PDF - حداکثر حجم: 50 مگابایت</div>
         </div>
         """, unsafe_allow_html=True)
@@ -630,7 +825,7 @@ def create_file_upload_section():
     else:  # ZIP upload
         st.markdown("""
         <div class="upload-area">
-            <div class="upload-text">فایل ZIP حاوی اسناد PDF را بارگذاری کنید</div>
+            <div class="upload-text">📦 انتخاب فایل ZIP</div>
             <div class="upload-subtext">فایل ZIP باید شامل فایل‌های PDF باشد</div>
         </div>
         """, unsafe_allow_html=True)
@@ -642,32 +837,30 @@ def create_file_upload_section():
         )
         
         if zip_file:
-            # Extract ZIP files
-            temp_dir = tempfile.mkdtemp()
-            zip_path = os.path.join(temp_dir, "archive.zip")
-            
-            with open(zip_path, 'wb') as f:
-                f.write(zip_file.getbuffer())
-            
-            extract_dir = os.path.join(temp_dir, "extracted")
-            os.makedirs(extract_dir, exist_ok=True)
-            
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(extract_dir)
-            
-            # Find PDF files
-            pdf_files = []
-            for root, dirs, files in os.walk(extract_dir):
-                for file in files:
-                    if file.lower().endswith('.pdf'):
-                        pdf_files.append(os.path.join(root, file))
-            
-            uploaded_files = pdf_files
-            
-            if pdf_files:
+            # Extract ZIP files - process directly without creating temp files
+            try:
+                with zipfile.ZipFile(zip_file, 'r') as zip_ref:
+                    pdf_files = []
+                    for file_info in zip_ref.filelist:
+                        if file_info.filename.lower().endswith('.pdf'):
+                            pdf_content = zip_ref.read(file_info.filename)
+                            pdf_files.append({
+                                'name': os.path.basename(file_info.filename),
+                                'content': pdf_content
+                            })
+                
+                uploaded_files = pdf_files
+                
+                if pdf_files:
+                    st.markdown(f"""
+                    <div class="status-success">
+                        ✅ {len(pdf_files)} فایل PDF از ZIP استخراج شد
+                    </div>
+                    """, unsafe_allow_html=True)
+            except Exception as e:
                 st.markdown(f"""
-                <div class="status-success">
-                    ✅ {len(pdf_files)} فایل PDF از ZIP استخراج شد
+                <div class="status-error">
+                    ❌ خطا در استخراج ZIP: {str(e)}
                 </div>
                 """, unsafe_allow_html=True)
     
@@ -675,7 +868,7 @@ def create_file_upload_section():
     return uploaded_files
 
 def create_processing_section(uploaded_files):
-    """Create clean processing section"""
+    """Create clean processing section with centered metrics"""
     if not uploaded_files:
         return None
     
@@ -684,7 +877,7 @@ def create_processing_section(uploaded_files):
         <h2 class="section-title">🚀 آماده پردازش</h2>
     """, unsafe_allow_html=True)
     
-    # File statistics with clean metrics
+    # File statistics with centered metrics
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -696,9 +889,10 @@ def create_processing_section(uploaded_files):
         """, unsafe_allow_html=True)
     
     with col2:
-        if isinstance(uploaded_files[0], str):  # File paths
-            total_size = sum(os.path.getsize(f) for f in uploaded_files if os.path.exists(f))
-        else:  # Uploaded file objects
+        # Calculate total size based on file type
+        if uploaded_files and isinstance(uploaded_files[0], dict):  # ZIP extracted files
+            total_size = sum(len(f['content']) for f in uploaded_files)
+        else:  # Regular uploaded files
             total_size = sum(f.size for f in uploaded_files)
         
         st.markdown(f"""
@@ -716,11 +910,21 @@ def create_processing_section(uploaded_files):
         </div>
         """, unsafe_allow_html=True)
     
-    # File list
-    with st.expander("📋 لیست فایل‌ها", expanded=False):
+    # Add spacing before the button
+    st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
+    
+    # File list with custom expander to avoid keyboard_double_array bug
+    if st.button("📋 لیست فایل ها", key="toggle_files"):
+        st.session_state.show_files = not st.session_state.get('show_files', False)
+    
+    if st.session_state.get('show_files', False):
         for i, file in enumerate(uploaded_files):
-            filename = os.path.basename(file) if isinstance(file, str) else file.name
-            file_size = (os.path.getsize(file) if isinstance(file, str) else file.size) / 1024
+            if isinstance(file, dict):  # ZIP extracted
+                filename = file['name']
+                file_size = len(file['content']) / 1024
+            else:  # Regular upload
+                filename = file.name
+                file_size = file.size / 1024
             
             st.markdown(f"""
             <div class="file-item">
@@ -738,7 +942,7 @@ def create_processing_section(uploaded_files):
     return None
 
 def process_files(uploaded_files):
-    """Process files with clean progress display"""
+    """Process files directly without creating temporary files"""
     analyzer = FinancialAnalyzer()
     results = []
     
@@ -751,14 +955,18 @@ def process_files(uploaded_files):
     
     progress_bar = st.progress(0)
     status_text = st.empty()
-    current_file_text = st.empty()
     
     total_files = len(uploaded_files)
     
     for i, file in enumerate(uploaded_files):
         try:
-            # Get filename
-            filename = os.path.basename(file) if isinstance(file, str) else file.name
+            # Get filename and content
+            if isinstance(file, dict):  # ZIP extracted
+                filename = file['name']
+                file_content = file['content']
+            else:  # Regular upload
+                filename = file.name
+                file_content = file.getvalue()
             
             # Update status
             status_text.markdown(f"""
@@ -767,19 +975,8 @@ def process_files(uploaded_files):
             </div>
             """, unsafe_allow_html=True)
             
-            # Process file
-            if isinstance(file, str):  # File path
-                file_data = pathlib.Path(file)
-            else:  # Uploaded file object
-                # Save to temporary file
-                temp_dir = tempfile.mkdtemp()
-                temp_path = os.path.join(temp_dir, file.name)
-                with open(temp_path, 'wb') as f:
-                    f.write(file.getbuffer())
-                file_data = pathlib.Path(temp_path)
-            
-            # Analyze with API rotation
-            result = analyzer.extract_table_from_page(file_data)
+            # Analyze directly with file content
+            result = analyzer.extract_table_from_page(file_content)
             results.append((filename, result))
             
             # Show success
@@ -811,8 +1008,18 @@ def process_files(uploaded_files):
     
     return results
 
+def get_risk_class(risk_level):
+    """Get CSS class for risk level"""
+    risk_classes = {
+        'پایین': 'risk-low',
+        'متوسط': 'risk-medium', 
+        'بالا': 'risk-high',
+        'بحرانی': 'risk-critical'
+    }
+    return risk_classes.get(risk_level, '')
+
 def create_results_section(results):
-    """Create clean results section"""
+    """Create clean results section with risk-colored cards and centered metrics"""
     if not results:
         return
     
@@ -821,7 +1028,7 @@ def create_results_section(results):
         <h2 class="section-title">📊 نتایج تحلیل</h2>
     """, unsafe_allow_html=True)
     
-    # Results summary
+    # Results summary with centered metrics
     successful = sum(1 for _, result in results if 'error' not in result)
     failed = len(results) - successful
     
@@ -829,7 +1036,7 @@ def create_results_section(results):
     
     with col1:
         st.markdown(f"""
-        <div class="metric-card" style="background: linear-gradient(135deg, #27AE60, #2ECC71);">
+        <div class="metric-card risk-low">
             <div class="metric-title">موفق</div>
             <div class="metric-value">{successful}</div>
         </div>
@@ -837,7 +1044,7 @@ def create_results_section(results):
     
     with col2:
         st.markdown(f"""
-        <div class="metric-card" style="background: linear-gradient(135deg, #E74C3C, #C0392B);">
+        <div class="metric-card risk-critical">
             <div class="metric-title">ناموفق</div>
             <div class="metric-value">{failed}</div>
         </div>
@@ -852,12 +1059,18 @@ def create_results_section(results):
         </div>
         """, unsafe_allow_html=True)
     
-    # Results details
-    with st.expander("🔍 جزئیات نتایج", expanded=True):
+    # Add spacing before the button
+    st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
+    
+    # Results details with custom toggle to avoid keyboard_double_array bug
+    if st.button("🔍 جزئیات نتایج", key="toggle_results"):
+        st.session_state.show_results = not st.session_state.get('show_results', True)
+    
+    if st.session_state.get('show_results', True):
         for filename, result in results:
             if 'error' in result:
                 st.markdown(f"""
-                <div class="result-item" style="border-left: 4px solid #E74C3C;">
+                <div class="result-item" style="border-right: 4px solid #E74C3C;">
                     <h4 style="color: #E74C3C; margin: 0;">❌ {filename}</h4>
                     <p style="color: #7F8C8D; margin: 0.5rem 0 0 0;">{result['error']}</p>
                 </div>
@@ -879,33 +1092,44 @@ def create_results_section(results):
                         'بحرانی': '#E74C3C'
                     }
                     risk_color = risk_colors.get(risk_level, '#4A90E2')
+                    risk_class = get_risk_class(risk_level)
                     
+                      # Risk level icons
+                    risk_icons = {
+                        'پایین': '🟢',
+                        'متوسط': '🟡',
+                        'بالا': '🟠',
+                        'بحرانی': '🔴'
+                    }
+                    risk_icon = risk_icons.get(risk_level, '⚪')
+
+
                     st.markdown(f"""
-                    <div class="result-item" style="border-left: 4px solid #27AE60;">
+                    <div class="result-item" style="border-right: 4px solid #27AE60;">
                         <h4 style="color: #2C3E50; margin: 0 0 1rem 0;">✅ {filename}</h4>
                         <div class="company-info">
                             <div class="info-item">
-                                <div class="info-label">شرکت</div>
+                                <div class="info-label">🏢 شرکت</div>
                                 <div class="info-value">{company_name}</div>
                             </div>
                             <div class="info-item">
-                                <div class="info-label">حسابرس</div>
+                                <div class="info-label">👨‍💼 حسابرس</div>
                                 <div class="info-value">{auditor_name}</div>
                             </div>
                             <div class="info-item">
-                                <div class="info-label">اظهارنظر</div>
+                                <div class="info-label">📋 اظهارنظر</div>
                                 <div class="info-value">{opinion_type}</div>
                             </div>
-                            <div class="info-item" style="border-left-color: {risk_color};">
-                                <div class="info-label">سطح ریسک</div>
-                                <div class="info-value" style="color: {risk_color};">{risk_level}</div>
+                            <div class="info-item {risk_class}" style="color: white;">
+                                <div class="info-label" style="color: rgba(255,255,255,0.9);">{risk_icon} سطح ریسک</div>
+                                <div class="info-value" style="color: white;">{risk_level}</div>
                             </div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
                 except Exception as e:
                     st.markdown(f"""
-                    <div class="result-item" style="border-left: 4px solid #27AE60;">
+                    <div class="result-item" style="border-right: 4px solid #27AE60;">
                         <h4 style="color: #2C3E50; margin: 0;">✅ {filename}</h4>
                         <p style="color: #7F8C8D; margin: 0.5rem 0 0 0;">تحلیل موفق - جزئیات در دسترس نیست</p>
                     </div>
@@ -1051,9 +1275,9 @@ def create_info_panel():
             <div style="color: #7F8C8D; line-height: 1.6;">
                 <p>• فایل‌های PDF گزارش‌های حسابرسی خود را بارگذاری کنید</p>
                 <p>• سیستم از چندین کلید API به صورت چرخشی استفاده می‌کند</p>
-                <p>•نتایج بصورت اکسل قابل دانلود است</p>
+                <p>• نتایج بصورت اکسل قابل دانلود است</p>
                 <p>• تحلیل شامل سه بخش اصلی است:</p>
-                <ul style="margin-left: 1rem;">
+                <ul style="margin-right: 1rem;">
                     <li>خلاصه و اطلاعات کلیدی</li>
                     <li>تجزیه و تحلیل گزارش</li>
                     <li>چک لیست موضوعی</li>
@@ -1067,6 +1291,10 @@ def main():
     # Initialize session state
     if 'results' not in st.session_state:
         st.session_state.results = None
+    if 'show_files' not in st.session_state:
+        st.session_state.show_files = False
+    if 'show_results' not in st.session_state:
+        st.session_state.show_results = True
     
     # Create header
     create_header()
@@ -1093,20 +1321,38 @@ def main():
             create_results_section(st.session_state.results)
     
     with col2:
-        # Statistics panel
+        # Statistics panel with centered metrics
         if st.session_state.results:
             st.markdown("""
             <div class="content-card">
-                <h3 style="color: #2C3E50; margin-bottom: 1rem;">📈 آمار کلی</h3>
+                <h3 style="color: #2C3E50; margin-bottom: 1rem; text-align: center;">📈 آمار کلی</h3>
             """, unsafe_allow_html=True)
             
             total_files = len(st.session_state.results)
             successful = sum(1 for _, result in st.session_state.results if 'error' not in result)
             success_rate = (successful / total_files) * 100 if total_files > 0 else 0
             
-            st.metric("کل فایل‌ها", total_files)
-            st.metric("تحلیل موفق", successful)
-            st.metric("درصد موفقیت", f"{success_rate:.1f}%")
+            # Use centered metric cards instead of st.metric
+            st.markdown(f"""
+            <div class="metric-card" style="margin-bottom: 1rem;">
+                <div class="metric-title">کل فایل‌ها</div>
+                <div class="metric-value">{total_files}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown(f"""
+            <div class="metric-card" style="margin-bottom: 1rem;">
+                <div class="metric-title">تحلیل موفق</div>
+                <div class="metric-value">{successful}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown(f"""
+            <div class="metric-card" style="margin-bottom: 1rem;">
+                <div class="metric-title">درصد موفقیت</div>
+                <div class="metric-value">{success_rate:.1f}%</div>
+            </div>
+            """, unsafe_allow_html=True)
             
             st.markdown("</div>", unsafe_allow_html=True)
 
