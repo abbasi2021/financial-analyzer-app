@@ -781,13 +781,9 @@ def create_api_status_sidebar():
                 <span class="api-status-value">{len(api_keys)}</span>
             </div>
             <div class="api-status-item">
-                <span class="api-status-label">پروکسی:</span>
-                <span class="api-status-value">غیرفعال</span>
-            </div>
-            <div class="api-status-item">
                 <span class="api-status-label">مدل:</span>
                 <span class="api-status-value">Gemini 2.5 Pro</span>
-            </div>
+            </div>            
         </div>
         """, unsafe_allow_html=True)
 
@@ -1358,3 +1354,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
