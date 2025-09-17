@@ -515,13 +515,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# proxy_url = "http://---.---.---.--:2---5"
-# os.environ['HTTP_PROXY'] = proxy_url
-# os.environ['HTTPS_PROXY'] = proxy_url
+proxy_url = "http://185.173.168.31:22525"
+os.environ['HTTP_PROXY'] = proxy_url
+os.environ['HTTPS_PROXY'] = proxy_url
 
 api_keys = [
-    "AIzaSyAo5oFZqsTRkUIqJRjoefWINWpbwPHbEn8",
-    "AIzaSyDyj1DlOLAlbKzTLFP2tz95TcIca4oV0Vg",
+    "AIzaSyAbWehhzebrPM3wLSh7DHNbrZ9JVOTfHWw",
+    "AIzaSyBHBGLi-Uq-X4aEQiz7Epwy8sjnj3jY7Yo",
+    "AIzaSyBeLYGH4JS-fPHYdqKgUPotV2dpGZYZ2to"
 ]
 
 api_key_cycler = cycle(api_keys)
@@ -1339,4 +1340,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
