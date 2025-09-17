@@ -1129,14 +1129,16 @@ def create_results_section(results):
             st.markdown("### 📥 دانلود فایل‌ها")
             
             for excel_file in excel_files:
+                counter=0
                 with open(excel_file, 'rb') as f:
                     st.download_button(
                         label=f"⬇️ دانلود {os.path.basename(excel_file)}",
                         data=f.read(),
                         file_name=os.path.basename(excel_file),
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key=f"download_{os.path.basename(excel_file)}"
+                        key=f"download_{os.path.basename(excel_file)}_{counter}"
                     )
+                counter+=1
     
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -1337,3 +1339,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
