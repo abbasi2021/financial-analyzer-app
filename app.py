@@ -31,15 +31,14 @@ st.set_page_config(
         initial_sidebar_state="expanded"
     )
 
-proxy_url = "http://185.173.168.31:22525"
-os.environ['HTTP_PROXY'] = proxy_url
-os.environ['HTTPS_PROXY'] = proxy_url
-
-api_keys = [
-    "AIzaSyAbWehhzebrPM3wLSh7DHNbrZ9JVOTfHWw",
-    "AIzaSyBHBGLi-Uq-X4aEQiz7Epwy8sjnj3jY7Yo",
-    "AIzaSyBeLYGH4JS-fPHYdqKgUPotV2dpGZYZ2to"
+api_keys = 
+[
+    "AIzaSyAo5oFZqsTRkUIqJRjoefWINWpbwPHbEn8",
+    "AIzaSyBeLYGH4JS-fPHYdqKgUPotV2dpGZYZ2to",
+    "AIzaSyDyj1DlOLAlbKzTLFP2tz95TcIca4oV0Vg"
+   
 ]
+
 
 # ==================== AUTHENTICATION CODE START ====================
 
@@ -1533,3 +1532,4 @@ if st.session_state.authentication_status:
 
     if __name__ == "__main__":
         main()
+
