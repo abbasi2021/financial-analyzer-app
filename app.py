@@ -31,12 +31,10 @@ st.set_page_config(
         initial_sidebar_state="expanded"
     )
 
-api_keys = 
-[
+api_keys = [
     "AIzaSyAo5oFZqsTRkUIqJRjoefWINWpbwPHbEn8",
     "AIzaSyBeLYGH4JS-fPHYdqKgUPotV2dpGZYZ2to",
     "AIzaSyDyj1DlOLAlbKzTLFP2tz95TcIca4oV0Vg"
-   
 ]
 
 
@@ -1532,4 +1530,5 @@ if st.session_state.authentication_status:
 
     if __name__ == "__main__":
         main()
+
 
