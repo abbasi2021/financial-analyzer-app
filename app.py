@@ -31,12 +31,12 @@ st.set_page_config(
         initial_sidebar_state="expanded"
     )
 
+
 api_keys = [
     "AIzaSyAo5oFZqsTRkUIqJRjoefWINWpbwPHbEn8",
     "AIzaSyBeLYGH4JS-fPHYdqKgUPotV2dpGZYZ2to",
     "AIzaSyDyj1DlOLAlbKzTLFP2tz95TcIca4oV0Vg"
 ]
-
 
 # ==================== AUTHENTICATION CODE START ====================
 
@@ -1489,6 +1489,33 @@ if st.session_state.authentication_status:
         
         st.markdown("</div>", unsafe_allow_html=True)
 
+    def flatten_reference_data(df):
+        """
+        تابع برای تبدیل ستون ارجاع به ستون‌های جداگانه
+        """
+        if 'ارجاع' in df.columns:
+            # استخراج شماره_بند و شماره_صفحه از ستون ارجاع
+            df['شماره_بند'] = df['ارجاع'].apply(
+                lambda x: x.get('شماره_بند', '') if isinstance(x, dict) else ''
+            )
+            df['شماره_صفحه'] = df['ارجاع'].apply(
+                lambda x: x.get('شماره_صفحه', '') if isinstance(x, dict) else ''
+            )
+            # حذف ستون اصلی ارجاع
+            df = df.drop('ارجاع', axis=1)
+        
+        return df
+    
+    def flatten_array_fields(df):
+        """
+        تابع برای تبدیل آرایه‌ها به رشته
+        """
+        for col in df.columns:
+            df[col] = df[col].apply(
+                lambda x: ", ".join(x) if isinstance(x, list) else x
+            )
+        return df
+    
     def convert_to_excel(results):
         """Convert results to Excel files"""
         temp_dir = tempfile.mkdtemp()
@@ -1531,14 +1558,9 @@ if st.session_state.authentication_status:
                     # Section 1
                     try:
                         part1 = report["بخش۱_خلاصه_و_اطلاعات_کلیدی"]
-                        df1_data = {}
-                        for k, v in part1.items():
-                            if isinstance(v, list):
-                                df1_data[k] = [", ".join(str(item) for item in v)]
-                            else:
-                                df1_data[k] = [str(v)]
+                        df1 = pd.DataFrame.from_dict({k: [v] if not isinstance(v, list) else [", ".join(v)] 
+                                        for k, v in part1.items()})
                         
-                        df1 = pd.DataFrame(df1_data)
                         df1.to_excel(writer, sheet_name="بخش1_خلاصه", index=False)
                     except Exception as e:
                         st.warning(f"خطا در پردازش بخش 1: {str(e)}")
@@ -1558,8 +1580,10 @@ if st.session_state.authentication_status:
                         # Basis of opinion
                         if "بند_مبانی_اظهارنظر" in part2:
                             basis_data = part2["بند_مبانی_اظهارنظر"]
-                            if basis_data.get("موضوعیت_دارد", False) and "موارد_مطرح_شده" in basis_data:
-                                df_basis = pd.DataFrame(basis_data["موارد_مطرح_شده"])
+                            if part2["بند_مبانی_اظهارنظر"]["موضوعیت_دارد"]:
+                                df_basis = pd.DataFrame(part2["بند_مبانی_اظهارنظر"]["موارد_مطرح_شده"])
+                                df_basis = flatten_reference_data(df_basis)
+                                df_basis = flatten_array_fields(df_basis)
                             else:
                                 df_basis = pd.DataFrame([{"موضوعیت_دارد": False}])
                             df_basis.to_excel(writer, sheet_name="بند_مبانی_اظهارنظر", index=False)
@@ -1569,6 +1593,8 @@ if st.session_state.authentication_status:
                             emphasis_data = part2["بند_تاکید_بر_مطالب_خاص"]
                             if emphasis_data.get("موضوعیت_دارد", False) and "موارد_مطرح_شده" in emphasis_data:
                                 df_emphasis = pd.DataFrame(emphasis_data["موارد_مطرح_شده"])
+                                df_emphasis = flatten_reference_data(df_emphasis)
+                                df_emphasis = flatten_array_fields(df_emphasis)
                             else:
                                 df_emphasis = pd.DataFrame([{"موضوعیت_دارد": False}])
                             df_emphasis.to_excel(writer, sheet_name="بند_تاکید_بر_مطالب_خاص", index=False)
@@ -1589,6 +1615,8 @@ if st.session_state.authentication_status:
                                     processed_violations.append(processed_violation)
                                 
                                 df_legal = pd.DataFrame(processed_violations)
+                                df_legal = flatten_reference_data(df_legal)
+                                df_legal = flatten_array_fields(df_legal)
                             else:
                                 df_legal = pd.DataFrame([{"موضوعیت_دارد": False}])
                             df_legal.to_excel(writer, sheet_name="گزارش_قانونی", index=False)
@@ -1601,6 +1629,8 @@ if st.session_state.authentication_status:
                         if "بخش۳_چک_لیست_موضوعی" in report:
                             part3 = report["بخش۳_چک_لیست_موضوعی"]
                             df3 = pd.DataFrame(part3)
+                            df3 = flatten_reference_data(df3)
+                            df3 = flatten_array_fields(df3)
                             df3.to_excel(writer, sheet_name="بخش3_چک_لیست", index=False)
                     except Exception as e:
                         st.warning(f"خطا در پردازش بخش 3: {str(e)}")
@@ -1682,6 +1712,3 @@ if st.session_state.authentication_status:
 
     if __name__ == "__main__":
         main()
-
-
-
