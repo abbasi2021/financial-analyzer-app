@@ -1064,7 +1064,7 @@ if st.session_state.authentication_status:
                     prompt
                 ],
                 config={
-                    'system_instruction': """شما به عنوان یک تحلیلگر مالی و حسابرس خبره عمل می‌کنید. وظیفه شما تحلیل گزارش حسابرس مستقل و بازرس قانونی به همراه صورت‌های مالی پیوست آن است 
+                    'system_instruction': """شما به عنوان یک تحلیلگر مالی و حسابرس خبره در ایران عمل می‌کنید. وظیفه شما تحلیل گزارش حسابرس مستقل و بازرس قانونی به همراه صورت‌های مالی پیوست آن است 
                         لطفاً تمام فیلدها را با دقت و بر اساس اطلاعات موجود در سند تکمیل کنید.""",
                     "response_mime_type": "application/json",
                     "response_schema": self.response_schema,
@@ -1714,4 +1714,5 @@ if st.session_state.authentication_status:
 
     if __name__ == "__main__":
         main()
+
 
