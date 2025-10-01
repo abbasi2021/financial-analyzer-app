@@ -6,6 +6,9 @@ credentials:
     fin.analyst:
       name: Financial Statement Analyst
       password:  'placeholder' 
+    h.khandani:
+      name: Hossein Khandani
+      password:  'placeholder'
 
 cookie:
   expiry_days: 1
