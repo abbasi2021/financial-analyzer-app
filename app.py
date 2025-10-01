@@ -44,11 +44,13 @@ api_keys = [
 with open('config.yaml') as file:
     config = yaml.load(file, Loader=SafeLoader)
 
-hashed_passwords = stauth.Hasher(["elnagh", "abc_fin_cba"]).generate()
+hashed_passwords = stauth.Hasher(["elnagh", "abc_fin_cba","123"]).generate()
 
 # Update config with hashed passwords
 config['credentials']['usernames']['admin']['password'] = hashed_passwords[0]
 config['credentials']['usernames']['fin.analyst']['password'] = hashed_passwords[1]
+config['credentials']['usernames']['h.khandani']['password'] = hashed_passwords[2]
+
 authenticator =stauth.Authenticate(
     config['credentials'],
     config['cookie']['name'],
@@ -1712,3 +1714,4 @@ if st.session_state.authentication_status:
 
     if __name__ == "__main__":
         main()
+
