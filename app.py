@@ -994,7 +994,8 @@ if st.session_state.authentication_status:
                                 "سود سهام دولت",
                                 "پروژه‌های اجرایی ناتمام",
                                 "معاملات با اشخاص وابسته",
-                                "ذخیره گیری"
+                                "ذخیره گیری",
+                                "صفحه امضا های سازمان حسابرسی"
                                 ]
                             },
                             "در_گزارش_آمده": {
@@ -1714,5 +1715,6 @@ if st.session_state.authentication_status:
 
     if __name__ == "__main__":
         main()
+
 
 
