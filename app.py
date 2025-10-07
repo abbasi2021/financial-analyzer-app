@@ -1381,7 +1381,7 @@ if st.session_state.authentication_status:
                         company_name = analysis['نام_شرکت']
                         auditor_name = analysis['نام_حسابرس']
                         opinion_type = analysis['نوع_اظهارنظر']
-                        risk_level = analysis['سطح_ریسک_کلی_بنا_به_نظر_مدل_زبانی']
+                        risk_level = analysis['سطح_ریسک_کلی_بنا_به_گزارش']
                         financial_year = analysis['دوره_مالی']  # Extract the financial year
                         
                         # Risk color coding
@@ -1716,6 +1716,7 @@ if st.session_state.authentication_status:
 
     if __name__ == "__main__":
         main()
+
 
 
 
