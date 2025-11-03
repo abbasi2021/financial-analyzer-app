@@ -1,5 +1,6 @@
 import streamlit as st
 import streamlit_authenticator as stauth
+import streamlit.components.v1 as components
 import yaml
 from yaml.loader import SafeLoader
 import json
@@ -2076,5 +2077,6 @@ if st.session_state.authentication_status:
 
     if __name__ == "__main__":
         main()
+
 
 
