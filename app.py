@@ -57,8 +57,8 @@ load_css("style.css")
 
 
 DEFAULT_API_KEYS = [
-    "AIzaSyAo5oFZqsTRkUIqJRjoefWINWpbwPHbEn8",
-    "AIzaSyBeLYGH4JS-fPHYdqKgUPotV2dpGZYZ2to",
+    "AIzaSyBkbPbqflqXfjow2fTLZZylfJKdyLqjVcQ",
+    "AIzaSyBjh5OuwGqtHzGXNA5KnmTdAQyWAczzyW8",
     "AIzaSyDyj1DlOLAlbKzTLFP2tz95TcIca4oV0Vg"
 ]
 
@@ -2049,3 +2049,4 @@ if st.session_state.authentication_status:
 
     if __name__ == "__main__":
         main()
+
