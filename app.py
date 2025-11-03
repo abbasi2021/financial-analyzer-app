@@ -359,7 +359,7 @@ if st.session_state.authentication_status:
         fig, ax = plt.subplots(figsize=(12, 7.5), facecolor='#f8f9fa')
         
         sns.heatmap(
-            heatmap_data, annot=True, cmap=custom_cmap, norm=norm,
+            heatmap_data, annot=False, cmap=custom_cmap, norm=norm,
             linewidths=2.5, linecolor='white', fmt='d', cbar=True, ax=ax,
             annot_kws={'fontsize': 11, 'weight': 'bold'},
             cbar_kws={'shrink': 0.8}
@@ -1549,6 +1549,33 @@ if st.session_state.authentication_status:
 
         st.markdown('<div class="modern-card">', unsafe_allow_html=True)
         st.subheader("📈 نمودارها و تحلیل روند")
+        components.html("""
+            <div style="background: #f0f4f8; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; direction: rtl;">
+                
+                <h2 style="text-align: center; color: #2c3e50; margin-bottom: 1.5rem; font-size: 1.8rem;">📊 فهرست نمودارها</h2>
+                
+                <div style="background: white; padding: 1.2rem; border-radius: 10px; margin-bottom: 1rem; border-right: 5px solid #667eea; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 style="color: #4c51bf; margin: 0 0 0.5rem 0; font-size: 1.3rem;">📊 بخش ۱: تحلیل روندهای کلان حسابرسی</h3>
+                </div>
+                
+                <div style="background: white; padding: 1.2rem; border-radius: 10px; margin-bottom: 1rem; border-right: 5px solid #f59e0b; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 style="color: #4c51bf; margin: 0 0 0.5rem 0; font-size: 1.3rem;">🔥 بخش ۲: نقشه حرارتی موضوعات کلیدی حسابرسی</h3>
+                </div>
+                
+                <div style="background: white; padding: 1.2rem; border-radius: 10px; margin-bottom: 1rem; border-right: 5px solid #f97316; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 style="color: #4c51bf; margin: 0 0 0.5rem 0; font-size: 1.3rem;">⚠️ بخش ۳: تحلیل ریسک‌های برجسته شده در گزارش</h3>
+                </div>
+                
+                <div style="background: white; padding: 1.2rem; border-radius: 10px; border-right: 5px solid #ef4444; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h3 style="color: #4c51bf; margin: 0 0 0.5rem 0; font-size: 1.3rem;">⚖️ بخش ۴: تحلیل تخلفات و الزامات قانونی</h3>
+                </div>
+                
+                <div style="margin-top: 1.5rem; padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; text-align: center;">
+                    <p style="color: white; margin: 0; font-size: 1.1rem; font-weight: bold;">📈 مجموع: 7 نمودار تحلیلی در 4 بخش </p>
+                </div>
+                
+            </div>
+            """, height=550)
         st.divider()
 
         try:
@@ -2049,4 +2076,5 @@ if st.session_state.authentication_status:
 
     if __name__ == "__main__":
         main()
+
 
