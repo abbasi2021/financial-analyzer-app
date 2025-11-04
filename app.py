@@ -25,6 +25,11 @@ import arabic_reshaper
 from bidi.algorithm import get_display
 from matplotlib.colors import LinearSegmentedColormap, BoundaryNorm
 import plotly.express as px
+from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.styles import NamedStyle
+from openpyxl.utils import get_column_letter
+from openpyxl import load_workbook
+from openpyxl.styles import Border, Side
 
 # ============================================================================
 # بخش 1: تنظیمات اولیه
@@ -1068,7 +1073,87 @@ if st.session_state.authentication_status:
     @st.cache_data
     def convert_to_excel(results):
 
+        def style_excel_file(file_path):
+            wb = load_workbook(file_path)
 
+            # 🎨 تعریف استایل عمومی فونت و وسط چین
+            base_style = NamedStyle(name="base_style")
+            base_style.font = Font(name="Calibri", size=12)
+            base_style.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+            # 🎨 استایل هدر
+            header_fill = PatternFill(start_color="CCC0DA", end_color="CCC0DA", fill_type="solid")
+            header_font = Font(name="Calibri", size=12, bold=True)
+
+            # 🎨 رنگ ردیف‌های یکی در میان
+            row_fill_alt = PatternFill(start_color="F7F7F7", end_color="F7F7F7", fill_type="solid")
+
+
+            for ws in wb.worksheets:
+
+                # ست کردن استایل کل شیت
+                for row in ws.iter_rows():
+                    for cell in row:
+                        cell.style = base_style
+
+                # 📌 استایل برای هدرها (ردیف اول)
+                # استایل هدر (ردیف 1)
+                for cell in ws[1]:
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+                # ✅ افزایش ارتفاع هدر
+                ws.row_dimensions[1].height = 35  
+     
+
+
+                # تنظیم عرض ستون‌ها با محدودیت برای ستون‌های متنی طولانی
+                long_text_columns = [ "نکات_کلیدی_و_نتیجه_گیری", "جزئیات", "شرح", "خلاصه_دلایل", "جزییات_سطح_ریسک_تعیین_شده"]
+
+                for col in ws.columns:
+                    max_length = 0
+                    column = get_column_letter(col[0].column)
+                    header = str(col[0].value)
+
+                    # محاسبه طول داده‌ها
+                    for cell in col:
+                        try:
+                            max_length = max(max_length, len(str(cell.value)))
+                        except:
+                            pass
+
+                    # ✅ شرط: اگر ستون جزو ستون‌های توضیحی بود → محدودیت اعمال کن
+                    if any(x in header for x in long_text_columns):
+                        ws.column_dimensions[column].width = min(max(max_length, 20), 40)
+                    else:
+                        # ستون‌ها کمی عریض‌تر از حالت قبلی
+                        ws.column_dimensions[column].width = max(max_length + 3, 15)
+
+                # 🟦 اعمال رنگ یکی در میان برای ردیف‌ها
+                for r in range(2, ws.max_row+1):
+                    if r % 2 == 0:
+                        for cell in ws[r]:
+                            cell.fill = row_fill_alt
+                           # ✅ تعریف Border
+                thin_border = Border(
+                left=Side(style='thin'),
+                right=Side(style='thin'),
+                top=Side(style='thin'),
+                bottom=Side(style='thin')
+            )
+                # ✅ اعمال Border روی کل سلول‌های شیت
+                for row in ws.iter_rows():
+                    for cell in row:
+                        cell.border = thin_border
+
+
+            wb.save(file_path)
+
+
+ # =======================
+    # ✅ بخش ساخت فایل اکسل
+# =======================
         temp_dir = tempfile.mkdtemp()
         excel_files = []
         
@@ -2077,6 +2162,7 @@ if st.session_state.authentication_status:
 
     if __name__ == "__main__":
         main()
+
 
 
 
