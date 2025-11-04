@@ -1150,10 +1150,10 @@ if st.session_state.authentication_status:
 
             wb.save(file_path)
 
-
  # =======================
     # ✅ بخش ساخت فایل اکسل
 # =======================
+
         temp_dir = tempfile.mkdtemp()
         excel_files = []
         
@@ -1284,9 +1284,13 @@ if st.session_state.authentication_status:
                             # ✅ اضافه کردن ستون year
                             df3['year'] = year
                             df3.to_excel(writer, sheet_name="بخش3_چک_لیست", index=False)
+                            
                     except Exception as e:
                         logger.warning(f"خطا در پردازش بخش 3: {str(e)}")
-                
+                           
+                           
+                 # ✅ اعمال استایل بعد از ذخیره فایل
+                style_excel_file(output_file)
                 excel_files.append(output_file)
                 logger.info(f"Successfully created Excel file: {excel_filename}")
                 
@@ -1295,7 +1299,7 @@ if st.session_state.authentication_status:
                 logger.error(f"Traceback: {traceback.format_exc()}")
         
         return excel_files
-
+        
     def create_results_section(results):
         if not results:
             return
@@ -2162,6 +2166,7 @@ if st.session_state.authentication_status:
 
     if __name__ == "__main__":
         main()
+
 
 
 
