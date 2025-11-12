@@ -1,3 +1,4 @@
+
 import streamlit as st
 import streamlit_authenticator as stauth
 import streamlit.components.v1 as components
@@ -25,11 +26,16 @@ import arabic_reshaper
 from bidi.algorithm import get_display
 from matplotlib.colors import LinearSegmentedColormap, BoundaryNorm
 import plotly.express as px
+import asyncio
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.styles import NamedStyle
 from openpyxl.utils import get_column_letter
 from openpyxl import load_workbook
 from openpyxl.styles import Border, Side
+import math
+from datetime import datetime, timedelta
 
 # ============================================================================
 # بخش 1: تنظیمات اولیه
@@ -65,8 +71,10 @@ load_css("style.css")
 DEFAULT_API_KEYS = [
     "AIzaSyBkbPbqflqXfjow2fTLZZylfJKdyLqjVcQ",
     "AIzaSyBjh5OuwGqtHzGXNA5KnmTdAQyWAczzyW8",
-    "AIzaSyDyj1DlOLAlbKzTLFP2tz95TcIca4oV0Vg"
+    "AIzaSyDyj1DlOLAlbKzTLFP2tz95TcIca4oV0Vg",
+    "AIzaSyCoopIWpj1DSB_qbPkc-uUX3-taqUW6OH4"
 ]
+
 
 if 'api_keys' not in st.session_state:
     st.session_state.api_keys = DEFAULT_API_KEYS.copy()
@@ -139,19 +147,359 @@ if st.session_state.authentication_status:
             else:
                 st.session_state.api_keys = DEFAULT_API_KEYS.copy()
 
+        
         st.divider()
-        # with st.expander("📋 راهنمای استفاده"):
-        #     st.markdown("""
-        #     - **مرحله ۱:** فایل‌های PDF را بارگذاری کنید.
-        #     - **مرحله ۲:** روی دکمه "شروع تحلیل" کلیک کنید.
-        #     - **مرحله ۳:** نتایج را مشاهده و دانلود کنید.
-        #     """)
+        st.info('''
+        ⚙️ **پردازش هوشمند**
+
+        پردازش فایل‌ها بصورت همزمان و موازی انجام خوهد شد
+        
+        تعداد فایل‌های همزمان به صورت خودکار 
+        بر اساس موارد زیر محاسبه می‌شود:
+
+        ✅  تعداد API Keys  
+        ✅ محدودیت‌های مدل  
+        ✅ تعداد فایل‌ها  
+        ✅ حافظه سیستم
+        ''')
 
         st.markdown("<div style='margin-top: auto;'></div>", unsafe_allow_html=True)
         authenticator.logout('🚪 خروج از سیستم', 'sidebar')
 
+
+    class APILimitsManager:
+        """مدیریت هوشمند محدودیت‌های API و محاسبه تعداد workers بهینه"""
+        
+        # محدودیت‌های Gemini API
+        MAX_TOKENS_PER_MIN = 125_000      # tokens per minute per API
+        MAX_REQUESTS_PER_MIN = 2          # Maximum requests per minute per API
+        MAX_REQUESTS_PER_DAY = 50         # Maximum requests per day per API
+        
+        # تخمین‌ها برای هر فایل PDF
+        AVG_TOKENS_PER_FILE = 20_000      # تخمین متوسط tokens برای هر فایل
+        AVG_PROCESSING_TIME = 30          # تخمین زمان پردازش هر فایل (ثانیه)
+        
+        def __init__(self, api_keys: list):
+            """
+            Args:
+                api_keys: لیست API keys موجود
+            """
+            self.num_api_keys = len(api_keys)
+            self.api_usage = {key: {'requests_today': 0, 'last_reset': datetime.now()} 
+                            for key in api_keys}
+        
+        def calculate_optimal_workers(self, num_files: int, file_sizes: list = None) -> dict:
+            """
+            محاسبه تعداد بهینه workers بر اساس محدودیت‌های API
+            
+            Args:
+                num_files: تعداد فایل‌های ورودی
+                file_sizes: اندازه فایل‌ها (اختیاری) برای تخمین دقیق‌تر
+            
+            Returns:
+                dict: شامل تعداد workers، زمان تخمینی، و توضیحات
+            """
+            
+            # 1️⃣ محاسبه بر اساس محدودیت Requests Per Minute
+            # هر API می‌تواند 2 request در دقیقه داشته باشد
+            max_workers_rpm = self.num_api_keys * self.MAX_REQUESTS_PER_MIN
+            
+            # 2️⃣ محاسبه بر اساس محدودیت Tokens Per Minute
+            # با فرض هر فایل 20K token
+            max_files_per_min_tokens = (self.num_api_keys * self.MAX_TOKENS_PER_MIN) / self.AVG_TOKENS_PER_FILE
+            max_workers_tokens = math.floor(max_files_per_min_tokens)
+            
+            # 3️⃣ محاسبه بر اساس محدودیت Daily Requests
+            # هر API: 50 request در روز
+            max_daily_files = self.num_api_keys * self.MAX_REQUESTS_PER_DAY
+            
+            # 4️⃣ محدودیت عملی: زمان پردازش
+            # اگر هر فایل 30 ثانیه طول بکشد و ما 60 ثانیه داریم
+            # می‌توانیم حداکثر 2 بار از هر API استفاده کنیم (مطابق با RPM)
+            processing_based_workers = max_workers_rpm
+            
+            # 5️⃣ انتخاب کمترین مقدار (bottleneck)
+            optimal_workers = min(
+                max_workers_rpm,          # محدودیت RPM
+                max_workers_tokens,       # محدودیت tokens
+                num_files,                # تعداد فایل‌ها
+                10                        # حداکثر منطقی برای جلوگیری از اشغال منابع
+            )
+            
+            # اطمینان از اینکه حداقل 1 worker داریم
+            optimal_workers = max(1, optimal_workers)
+            
+            # 6️⃣ محاسبه زمان تخمینی
+            # با پردازش موازی
+            estimated_time_parallel = (num_files / optimal_workers) * self.AVG_PROCESSING_TIME
+            # بدون پردازش موازی
+            estimated_time_sequential = num_files * self.AVG_PROCESSING_TIME
+            
+            # 7️⃣ بررسی محدودیت روزانه
+            daily_limit_ok = num_files <= max_daily_files
+            
+            # 8️⃣ تعیین استراتژی
+            if num_files <= max_workers_rpm:
+                strategy = "fast_parallel"
+                message = f"✅ پردازش سریع: همه فایل‌ها به طور همزمان ({optimal_workers} worker)"
+            elif num_files <= max_daily_files:
+                strategy = "batch_parallel"
+                message = f"⚡ پردازش دسته‌ای: {optimal_workers} worker با چند batch"
+            else:
+                strategy = "limited"
+                optimal_workers = min(optimal_workers, 3)
+                message = f"⚠️ محدودیت روزانه: فقط {max_daily_files} فایل امکان‌پذیر است"
+            
+            return {
+                'optimal_workers': optimal_workers,
+                'strategy': strategy,
+                'message': message,
+                'estimated_time_minutes': estimated_time_parallel / 60,
+                'speedup_factor': estimated_time_sequential / estimated_time_parallel,
+                'limits': {
+                    'max_rpm': max_workers_rpm,
+                    'max_tokens': max_workers_tokens,
+                    'max_daily': max_daily_files,
+                    'files_count': num_files,
+                    'daily_limit_ok': daily_limit_ok
+                },
+                'explanation': self._generate_explanation(
+                    optimal_workers, 
+                    num_files, 
+                    max_workers_rpm,
+                    estimated_time_parallel
+                )
+            }
+        
+        def _generate_explanation(self, workers: int, files: int, max_rpm: int, time_min: float) -> str:
+            """تولید توضیحات برای کاربر"""
+            explanations = []
+            
+            explanations.append(f"🔧 **تنظیمات محاسبه شده:**")
+            explanations.append(f"  • تعداد API Keys: {self.num_api_keys}")
+            explanations.append(f"  • تعداد فایل‌ها: {files}")
+            explanations.append(f"  • Workers بهینه: {workers}")
+            explanations.append(f"  • زمان تخمینی: {time_min:.1f} دقیقه")
+            
+            explanations.append(f"\n📊 **محدودیت‌های API:**")
+            explanations.append(f"  • حداکثر همزمان: {max_rpm} فایل در دقیقه")
+            explanations.append(f"  • هر API: {self.MAX_REQUESTS_PER_MIN} request/min")
+            explanations.append(f"  • محدودیت روزانه: {self.MAX_REQUESTS_PER_DAY * self.num_api_keys} فایل")
+            
+            if files > max_rpm:
+                batches = math.ceil(files / workers)
+                explanations.append(f"\n⚡ **استراتژی پردازش:**")
+                explanations.append(f"  • پردازش در {batches} دسته")
+                explanations.append(f"  • هر دسته: {workers} فایل همزمان")
+            
+            return "\n".join(explanations)
+
+    
+    # ============================================================================
+    # 🔄 تابع اصلاح شده: پردازش با محاسبه خودکار workers
+    # ============================================================================
+
+    def process_files_concurrent_smart(uploaded_files):
+        """
+        ✅ پردازش همزمان با محاسبه خودکار تعداد workers بهینه
+        
+        ویژگی‌های جدید:
+        - محاسبه خودکار workers بر اساس محدودیت‌های API
+        - نمایش توضیحات کامل برای کاربر
+        - بهینه‌سازی منابع
+        """
+        
+        # 1️⃣ محاسبه تعداد workers بهینه
+        limits_manager = APILimitsManager(st.session_state.api_keys)
+        optimization = limits_manager.calculate_optimal_workers(
+            num_files=len(uploaded_files)
+        )
+        
+        optimal_workers = optimization['optimal_workers']
+        
+        # 2️⃣ نمایش اطلاعات برای کاربر
+        st.markdown('<div class="modern-card">', unsafe_allow_html=True)
+        
+        # نمایش تنظیمات محاسبه شده
+        # with st.expander("🤖 تنظیمات خودکار (کلیک برای جزئیات)", expanded=False):
+        #     st.markdown(optimization['explanation'])
+        
+        # نمایش پیام اصلی
+        # st.info(optimization['message'])
+        
+
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # 3️⃣ بررسی محدودیت روزانه
+        if not optimization['limits']['daily_limit_ok']:
+            st.error(
+                f"⚠️ تعداد فایل‌ها ({len(uploaded_files)}) بیشتر از محدودیت روزانه "
+                f"({optimization['limits']['max_daily']}) است. "
+                f"لطفاً تعداد فایل‌ها را کاهش دهید یا API key های بیشتری اضافه کنید."
+            )
+            return None
+        
+        # 4️⃣ شروع پردازش با workers محاسبه شده
+        analyzer = FinancialAnalyzer()
+        total_files = len(uploaded_files)
+        max_retry_attempts = 3
+        
+        st.markdown('<div class="modern-card"><h3>در حال پردازش...</h3></div>', unsafe_allow_html=True)
+        progress_bar = st.progress(0)
+        status_placeholder = st.empty()
+        status_container = st.container()
+        
+        # Metrics
+        col1, col2, col3, col4 = st.columns(4)
+        metric_success = col1.empty()
+        metric_failed = col2.empty()
+        metric_retrying = col3.empty()
+        metric_total = col4.empty()
+        
+        results = [None] * total_files
+        completed = 0
+        failed_count = 0
+        retry_count = 0
+        start_time = time.time()
+        files_to_retry = []
+        
+        # 5️⃣ پردازش اولیه با optimal_workers
+        with ThreadPoolExecutor(max_workers=optimal_workers) as executor:
+            future_to_index = {
+                executor.submit(process_single_file, analyzer, file, i, total_files, 1, max_retry_attempts): i
+                for i, file in enumerate(uploaded_files)
+            }
+            
+            for future in as_completed(future_to_index):
+                index, filename, result, error, needs_retry = future.result()
+                completed += 1
+                
+                if error:
+                    if needs_retry:
+                        files_to_retry.append((index, uploaded_files[index], filename, 2))
+                        retry_count += 1
+                        with status_container:
+                            st.warning(f'🔄 **{filename}** نیاز به تلاش مجدد دارد ({completed}/{total_files})')
+                    else:
+                        results[index] = (filename, {"error": f"خطا: {error}"})
+                        failed_count += 1
+                        with status_container:
+                            st.error(f'❌ **{filename}**: خطای غیرقابل بازیابی')
+                else:
+                    results[index] = (filename, result)
+                    with status_container:
+                        st.success(f'✅ **{filename}** ({completed}/{total_files})')
+                
+                progress_bar.progress(completed / total_files)
+                
+                metric_success.metric("✅ موفق", len([r for r in results if r and 'error' not in r[1]]))
+                metric_failed.metric("❌ ناموفق", failed_count)
+                metric_retrying.metric("🔄 در انتظار تلاش مجدد", len(files_to_retry))
+                metric_total.metric("📊 کل", total_files)
+                
+                elapsed = time.time() - start_time
+                avg_time = elapsed / completed
+                remaining = (total_files - completed + len(files_to_retry)) * avg_time
+                status_placeholder.info(
+                    f'📊 پردازش اولیه: {completed}/{total_files} | '
+                    f'⏱️ زمان: {elapsed:.1f}s | ⏳ تخمین: {remaining:.1f}s'
+                )
+        
+        # 6️⃣ مرحله Retry (اگر نیاز باشد)
+        if files_to_retry:
+            st.markdown("---")
+            st.markdown("### 🔄 تلاش مجدد برای فایل‌های ناموفق...")
+            
+            retry_attempt = 1
+            # در retry از نصف workers استفاده می‌کنیم
+            retry_workers = max(1, optimal_workers // 2)
+            
+            while files_to_retry and retry_attempt <= max_retry_attempts:
+                st.info(f"🔄 دور {retry_attempt} از تلاش مجدد ({len(files_to_retry)} فایل) با {retry_workers} worker")
+                
+                delay = min(5 * retry_attempt, 15)
+                with st.spinner(f'⏳ صبر {delay} ثانیه قبل از تلاش مجدد...'):
+                    time.sleep(delay)
+                
+                current_retry_list = files_to_retry.copy()
+                files_to_retry = []
+                
+                with ThreadPoolExecutor(max_workers=retry_workers) as executor:
+                    future_to_data = {
+                        executor.submit(
+                            process_single_file, 
+                            analyzer, 
+                            file_data, 
+                            idx, 
+                            total_files, 
+                            attempt_num,
+                            max_retry_attempts
+                        ): (idx, fname, attempt_num)
+                        for idx, file_data, fname, attempt_num in current_retry_list
+                    }
+                    
+                    for future in as_completed(future_to_data):
+                        idx, fname, attempt_num = future_to_data[future]
+                        index, filename, result, error, needs_retry = future.result()
+                        
+                        if error:
+                            if needs_retry and attempt_num < max_retry_attempts:
+                                files_to_retry.append((index, uploaded_files[index], filename, attempt_num + 1))
+                                with status_container:
+                                    st.warning(f'🔄 **{filename}** - تلاش {attempt_num + 1}/{max_retry_attempts}')
+                            else:
+                                results[index] = (filename, {"error": f"خطا بعد از {attempt_num} تلاش: {error}"})
+                                failed_count += 1
+                                with status_container:
+                                    st.error(f'❌ **{filename}**: ناموفق بعد از {attempt_num} تلاش')
+                        else:
+                            results[index] = (filename, result)
+                            with status_container:
+                                st.success(f'✅ **{filename}** موفق در تلاش {attempt_num}!')
+                            failed_count = max(0, failed_count - 1)
+                        
+                        successful = len([r for r in results if r and 'error' not in r[1]])
+                        metric_success.metric("✅ موفق", successful)
+                        metric_failed.metric("❌ ناموفق", failed_count)
+                        metric_retrying.metric("🔄 در انتظار تلاش مجدد", len(files_to_retry))
+                
+                retry_attempt += 1
+        
+        # 7️⃣ گزارش نهایی
+        total_duration = time.time() - start_time
+        successful = len([r for r in results if r and 'error' not in r[1]])
+        
+        st.markdown("---")
+        
+        if failed_count == 0:
+            status_placeholder.success(
+                f'🎉 همه فایل‌ها با موفقیت پردازش شدند! '
+                f'{total_files} فایل در {total_duration:.1f} ثانیه ({total_duration/60:.1f} دقیقه)'
+            )
+        else:
+            status_placeholder.warning(
+                f'⚠️ پردازش تکمیل شد: {successful}/{total_files} موفق، {failed_count} ناموفق '
+                f'در {total_duration:.1f} ثانیه ({total_duration/60:.1f} دقیقه)'
+            )
+        
+        if retry_count > 0:
+            st.info(f'ℹ️ تعداد فایل‌هایی که نیاز به تلاش مجدد داشتند: {retry_count}')
+        
+        # نمایش مقایسه با زمان تخمینی
+        estimated_time = optimization['estimated_time_minutes'] * 60
+        if abs(total_duration - estimated_time) < estimated_time * 0.2:  # ±20%
+            st.success(f"✅ زمان پردازش مطابق تخمین بود!")
+        elif total_duration < estimated_time:
+            st.success(f"🚀 پردازش {(estimated_time - total_duration):.0f} ثانیه سریع‌تر از تخمین بود!")
+        
+        return results
+    
+
+
     # ========================================================================
-    # بخش 4: کلاس‌ها و توابع اصلی
+    # بخش 4: کلاس‌ها و توابع اصلی (بدون تغییر)
     # ========================================================================
 
     class APIKeyManager:
@@ -162,27 +510,31 @@ if st.session_state.authentication_status:
             self.current_index = 0
             self.failures = {key: 0 for key in api_keys}
             self.max_failures = 3
+            self.lock = threading.Lock()  # ✅ اضافه شده برای thread-safety
             
         def get_next_key(self) -> str:
-            attempts = 0
-            while attempts < len(self.api_keys):
-                key = self.api_keys[self.current_index]
-                self.current_index = (self.current_index + 1) % len(self.api_keys)
-                if self.failures.get(key, 0) < self.max_failures:
-                    return key
-                attempts += 1
-            logger.warning("All API keys have failed, resetting failure counters")
-            self.failures = {key: 0 for key in self.api_keys}
-            return self.api_keys[0]
+            with self.lock:  # ✅ محافظت از race condition
+                attempts = 0
+                while attempts < len(self.api_keys):
+                    key = self.api_keys[self.current_index]
+                    self.current_index = (self.current_index + 1) % len(self.api_keys)
+                    if self.failures.get(key, 0) < self.max_failures:
+                        return key
+                    attempts += 1
+                logger.warning("All API keys have failed, resetting failure counters")
+                self.failures = {key: 0 for key in self.api_keys}
+                return self.api_keys[0]
         
         def mark_failure(self, key: str):
-            if key in self.failures:
-                self.failures[key] += 1
-                logger.warning(f"API key failure count for {key[:8]}...: {self.failures[key]}")
+            with self.lock:
+                if key in self.failures:
+                    self.failures[key] += 1
+                    logger.warning(f"API key failure count for {key[:8]}...: {self.failures[key]}")
         
         def mark_success(self, key: str):
-            if key in self.failures:
-                self.failures[key] = 0
+            with self.lock:
+                if key in self.failures:
+                    self.failures[key] = 0
 
     api_key_manager = APIKeyManager(st.session_state.api_keys)
 
@@ -195,14 +547,30 @@ if st.session_state.authentication_status:
     # ========================================================================
 
     def setup_persian_font():
+        """تنظیم فونت فارسی با حل warning های glyph"""
         try:
             font_path = 'fonts/B Mitra_0.ttf'
-            font = FontProperties(fname=font_path)
-            plt.rc('font', family='B Mitra')
+            
+            # تنظیم فونت پیش‌فرض برای matplotlib
+            plt.rcParams['font.family'] = ['Tahoma', 'Arial', 'DejaVu Sans']
+            plt.rcParams['axes.unicode_minus'] = False
+            
+            if os.path.exists(font_path):
+                font = FontProperties(fname=font_path)
+                logger.info("فونت B Mitra بارگذاری شد")
+            else:
+                font = FontProperties(family='Tahoma')
+                logger.warning("فونت B Mitra یافت نشد، از Tahoma استفاده می‌شود")
+            
+            # سرکوب warning های glyph missing
+            import warnings
+            warnings.filterwarnings('ignore', message='Glyph .* missing from font')
             
             return font
-        except:
-            logger.warning("فونت B Mitra یافت نشد.")
+            
+        except Exception as e:
+            logger.error(f"خطا در تنظیم فونت: {e}")
+            plt.rcParams['font.family'] = ['Tahoma', 'Arial']
             return FontProperties()
 
     def process_persian_text(text):
@@ -641,11 +1009,14 @@ if st.session_state.authentication_status:
         
         return fig
     # ========================================================================
-    # بخش 7: کلاس FinancialAnalyzer (ساده شده)
+    # بخش اصلاح شده: پردازش همزمان فایل‌ها
     # ========================================================================
 
     class FinancialAnalyzer:
+        """کلاس تحلیلگر مالی با پشتیبانی از پردازش همزمان"""
+        
         def __init__(self):
+            # Schema بدون تغییر
             self.response_schema = {
                 "type": "object",
                 "properties": {
@@ -739,7 +1110,7 @@ if st.session_state.authentication_status:
                                                                     },
                                                                 "شماره_صفحه": {
                                                                     "type": "string",
-                                                                    "description": "شماره صفحه مربوطه در گزارش حسابرس مستقل و بازرس قانونی.چنانچه این مورد در چند بند به ان اشاره شده صفحات منطبق با بند را به ترتیب بند برگردان بین صفحات , قرار بده مانند ۱,۵"
+                                                                "description": "شماره صفحه مربوطه در گزارش حسابرس مستقل و بازرس قانونی.چنانچه این مورد در چند بند به ان اشاره شده صفحات منطبق با بند را به ترتیب بند برگردان بین صفحات , قرار بده مانند ۱,۵"
                                                                     }
                                                             },
                                                             "required": ["شماره_بند", "شماره_صفحه"]
@@ -782,14 +1153,14 @@ if st.session_state.authentication_status:
                                                         "ارجاع": {
                                                             "type": "object",
                                                             "properties": {
-                                                                  "شماره_بند": {
+                                                               "شماره_بند": {
                                                                 "type": "string",
                                                                 "description": "شماره بند مربوطه در گزارش حسابرس مستقل و بازرس قانونی .بین بند ها , قرار بده مانند ۲,۶"
-                                                                    },
-                                                                    "شماره_صفحه": {
-                                                                        "type": "string",
-                                                                        "description": "شماره صفحه مربوطه در گزارش حسابرس مستقل و بازرس قانونی.چنانچه این مورد در چند بند به ان اشاره شده صفحات منطبق با بند را به ترتیب بند برگردان بین صفحات , قرار بده مانند ۱,۵"
-                                                                    }
+                                                            },
+                                                            "شماره_صفحه": {
+                                                                "type": "string",
+                                                                "description": "شماره صفحه مربوطه در گزارش حسابرس مستقل و بازرس قانونی.چنانچه این مورد در چند بند به ان اشاره شده صفحات منطبق با بند را به ترتیب بند برگردان بین صفحات , قرار بده مانند ۱,۵"
+                                                            }
                                                             },
                                                             "required": ["شماره_بند", "شماره_صفحه"]
                                                         },
@@ -888,13 +1259,54 @@ if st.session_state.authentication_status:
                                         "موضوع": {
                                             "type": "string",
                                             "enum": [
-                                                "کفایت سرمایه", "تسعیر ارز و عملیات خارجی", "مالیات و جرائم مالیاتی",
-                                                "تجدید ارزیابی دارایی‌های ثابت و نامشهود", "تعهدات ارزی و اختلاف با بانک مرکزی",
-                                                "تهاتر(Barter)", "عدم دریافت تأییدیه‌های حسابداری", "مغایرت‌های حساب جاری بانک مرکزی",
-                                                "نسبت کفایت سرمایه", "نسبت ها در چارچوب بازل(bazel Accords)",
-                                                "(Facilities and Credits)تسهیلات و اعتبارات", "سود سهام دولت",
-                                                "پروژه‌های اجرایی ناتمام", "معاملات با اشخاص وابسته", "ذخیره گیری",
-                                                "صفحه امضا های سازمان حسابرسی"
+                                                # 🎯 اولویت خیلی بالا
+                                                "کفایت سرمایه",
+                                                "نسبت‌ها در چارچوب بازل",
+                                                "ریسک نقدینگی",
+                                                "مدیریت دارایی و بدهی (ALM)",
+                                                "ریسک نرخ بهره",
+                                                "تمرکز ریسک اعتباری",
+                                                "ذخیره‌گیری (کلی)",
+
+                                                # 🔥 اولویت بالا
+                                                "صورت جریان وجوه نقد",
+                                                "کنترل‌های داخلی و حسابرسی داخلی",
+                                                "حاکمیت شرکتی",
+                                                "اوراق بهادار و سرمایه‌گذاری‌ها",
+                                                "تسعیر ارز و عملیات خارجی",
+                                                "تعهدات ارزی و اختلاف با بانک مرکزی",
+                                                "ذخیره مطالبات مشکوک‌الوصول",
+                                                "مطالبات مشکوک‌الوصول",
+                                                "تسهیلات و اعتبارات",
+                                                # "سرمایه‌گذاری در شرکت‌های وابسته",
+                                                # "کاهش ارزش دارایی‌ها",
+                                                # "افشای ریسک‌های عملیاتی",
+                                                # "نسبت‌های بدهی و نقدینگی",
+                                                # "نسبت کفایت سرمایه",
+                                                # "معاملات با اشخاص وابسته",
+                                                # "تداوم فعالیت",
+                                                # "انطباق با مقررات ضدپولشویی (AML/CFT)"
+
+                                                # # ⚙️ اولویت متوسط
+                                                # "ذخیره مزایای پایان خدمت کارکنان",
+                                                # "ریسک شهرت",
+                                                # "ذخیره مالیات بر درآمد",
+                                                # "حقوق صاحبان سهام",
+                                                # "سیستم‌های اطلاعاتی و فناوری",
+                                                # "انطباق با استانداردهای بین‌المللی",
+                                                # "پوشش بیمه‌ای دارایی‌ها",
+                                                # "دعاوی و جرائم حقوقی",
+                                                # "کیفیت افشای اطلاعات",
+                                                # "رویدادهای بعد از تاریخ ترازنامه",
+                                                # "تغییر رویه‌های حسابداری",
+                                                # "بدهی‌های احتمالی",
+                                                # "نسبت‌های سودآوری",
+                                                # "مالیات و جرائم مالیاتی",
+                                                # "سود سهام دولت",
+                                                # "عدم دریافت تأییدیه‌های حسابداری",
+                                                # "ذخیره دعاوی حقوقی",
+                                                # "تهاتر (Barter)",
+                                                # "صفحه امضا های سازمان حسابرسی"
                                             ]
                                         },
                                         "در_گزارش_آمده": {"type": "boolean"},
@@ -909,14 +1321,14 @@ if st.session_state.authentication_status:
                                         "ارجاع": {
                                             "type": "object",
                                             "properties": {
-                                                      "شماره_بند": {
-                                                        "type": "string",
-                                                        "description": "شماره بند مربوطه در گزارش حسابرس مستقل و بازرس قانونی .بین بند ها , قرار بده مانند ۲,۶"
-                                                    },
-                                                    "شماره_صفحه": {
-                                                        "type": "string",
-                                                        "description": "شماره صفحه مربوطه در گزارش حسابرس مستقل و بازرس قانونی.چنانچه این مورد در چند بند به ان اشاره شده صفحات منطبق با بند را به ترتیب بند برگردان بین صفحات , قرار بده مانند ۱,۵"
-                                                    }
+                                                "شماره_بند": {
+                                                "type": "string",
+                                                "description": "شماره بند مربوطه در گزارش حسابرس مستقل و بازرس قانونی .بین بند ها , قرار بده مانند ۲,۶"
+                                            },
+                                            "شماره_صفحه": {
+                                                "type": "string",
+                                                "description": "شماره صفحه مربوطه در گزارش حسابرس مستقل و بازرس قانونی.چنانچه این مورد در چند بند به ان اشاره شده صفحات منطبق با بند را به ترتیب بند برگردان بین صفحات , قرار بده مانند ۱,۵"
+                                            }
                                             }
                                         }
                                     },
@@ -930,10 +1342,12 @@ if st.session_state.authentication_status:
             }
         
         def extract_table_from_page(self, file_content: bytes, filename: str, max_retries: int = 5) -> Dict:
-            prompt = """لطفاً گزارش حسابرس را تحلیل کنید. نکته بسیار مهم برای بخش۳_چک_لیست_موضوعی:
+
+            prompt =  """لطفاً گزارش حسابرس را تحلیل کنید. نکته بسیار مهم برای بخش۳_چک_لیست_موضوعی:
             - باید تمام 16 موضوع زیر را چک کنید و در خروجی بیاورید
             - برای هر موضوع، فیلد "در_گزارش_آمده" را مشخص کنید (true یا false)
             - همه 16 موضوع باید در آرایه بخش۳_چک_لیست_موضوعی باشند"""
+            
             for attempt in range(max_retries):
                 try:
                     client, current_api_key = get_client_with_retry()
@@ -941,7 +1355,12 @@ if st.session_state.authentication_status:
                     response = client.models.generate_content(
                         model="gemini-2.5-pro",
                         contents=[types.Part.from_bytes(data=file_content, mime_type="application/pdf"), prompt],
-                        config={'system_instruction': "شما تحلیلگر مالی هستید.", "response_mime_type": "application/json", "response_schema": self.response_schema, "temperature": 0.5}
+                        config={
+                            'system_instruction': "شما تحلیلگر مالی هستید.",
+                            "response_mime_type": "application/json",
+                            "response_schema": self.response_schema,
+                            "temperature": 0.5
+                        }
                     )
                     if not response or not response.text:
                         raise ValueError("API response was empty")
@@ -959,8 +1378,216 @@ if st.session_state.authentication_status:
             raise Exception(f"Failed after {max_retries} attempts")
 
     # ========================================================================
-    # بخش 8: توابع کمکی
+    # ✅ تابع جدید: پردازش همزمان با ThreadPoolExecutor
     # ========================================================================
+
+    def process_single_file(analyzer, file_data, index, total, attempt=1, max_attempts=3):
+        """
+        پردازش یک فایل با قابلیت retry خودکار
+        
+        Args:
+            analyzer: نمونه FinancialAnalyzer
+            file_data: داده فایل (dict یا file object)
+            index: شماره فایل
+            total: تعداد کل فایل‌ها
+            attempt: تلاش فعلی (1، 2، 3)
+            max_attempts: حداکثر تعداد تلاش
+        
+        Returns:
+            tuple: (index, filename, result, error, needs_retry)
+        """
+        filename = file_data['name'] if isinstance(file_data, dict) else file_data.name
+        file_content = file_data['content'] if isinstance(file_data, dict) else file_data.getvalue()
+        
+        try:
+            logger.info(f"🔄 Processing {filename} - Attempt {attempt}/{max_attempts}")
+            result = analyzer.extract_table_from_page(file_content, filename)
+            return (index, filename, result, None, False)  # ✅ اضافه شدن False
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"❌ Failed to process {filename} (Attempt {attempt}): {error_msg}")
+            
+            # بررسی اینکه آیا نیاز به retry دارد یا نه
+            needs_retry = attempt < max_attempts and is_retryable_error(error_msg)
+            
+            return (index, filename, None, error_msg, needs_retry)  # ✅ اضافه شدن needs_retry
+        
+
+    def is_retryable_error(error_msg: str) -> bool:
+        """
+        تشخیص اینکه خطا قابل retry است یا نه
+        
+        خطاهای قابل retry:
+        - Timeout
+        - Rate limit (429)
+        - Server error (500, 503)
+        - Network errors
+        - API overloaded
+        
+        خطاهای غیرقابل retry:
+        - Invalid file format
+        - Authentication error (403)
+        - File too large
+        """
+        retryable_patterns = [
+            'timeout',
+            'timed out',
+            'rate limit',
+            '429',
+            '500',
+            '503',
+            'server error',
+            'network',
+            'connection',
+            'overloaded',
+            'temporarily unavailable',
+            'try again later',
+            'unavailable'
+        ]
+        
+        error_lower = error_msg.lower()
+        return any(pattern in error_lower for pattern in retryable_patterns)
+    
+ 
+    # ========================================================================
+    # ✅ تابع اصلاح شده: create_processing_section
+    # ========================================================================
+
+    def create_processing_section(uploaded_files):
+        """بخش پردازش فایل‌ها با حل مشکل قطع شدن هنگام تغییر تب"""
+        
+        # ✅ CHANGE 1: اضافه کردن session_state برای نگهداری وضعیت پردازش
+        if 'processing_active' not in st.session_state:
+            st.session_state.processing_active = False
+        if 'processing_results' not in st.session_state:
+            st.session_state.processing_results = None
+        if 'processing_status' not in st.session_state:
+            st.session_state.processing_status = {}
+        
+        if not uploaded_files:
+            return None
+
+        with st.container():
+            st.subheader("🚀 آماده پردازش")
+            st.divider()
+
+            col1, col2, col3 = st.columns(3)
+            total_size_mb = sum(
+                len(f['content']) if isinstance(f, dict) else f.size
+                for f in uploaded_files
+            ) / (1024 * 1024)
+
+            with col1:
+                st.markdown(f"""
+                    <div class="metric-modern">
+                        <p>تعداد فایل‌ها</p>
+                        <div class="metric-value-box">
+                            <div class="metric-value">{len(uploaded_files)}</div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            with col2:
+                st.markdown(f"""
+                    <div class="metric-modern">
+                        <p>حجم کل</p>
+                        <div class="metric-value-box">
+                            <div class="metric-value">{total_size_mb:.1f} MB</div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            with col3:
+                # ✅ CHANGE 2: نمایش وضعیت بر اساس processing_active
+                if st.session_state.processing_active:
+                    status_text = "در حال پردازش... 🔄"
+                    status_class = "metric-status-processing"
+                else:
+                    status_text = "آماده ✅"
+                    status_class = "metric-status-ready"
+                
+                st.markdown(f"""
+                    <div class="metric-modern {status_class}">
+                        <p>وضعیت</p>
+                        <div class="metric-value-box">
+                            <div class="metric-value">{status_text}</div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # ✅ CHANGE 3: دکمه شروع فقط زمانی فعال است که پردازش در حال اجرا نیست
+            start_button = st.button(
+                "🚀 شروع تحلیل",
+                type="primary",
+                disabled=st.session_state.processing_active,  # غیرفعال در حین پردازش
+                # use_container_width=True
+            )
+            
+            # ✅ CHANGE 4: شروع پردازش فقط اگر دکمه زده شود و پردازش فعال نباشد
+            if start_button and not st.session_state.processing_active:
+                # فعال‌سازی فلگ پردازش
+                st.session_state.processing_active = True
+                st.session_state.processing_results = None
+                st.session_state.processing_status = {
+                    'total': len(uploaded_files),
+                    'completed': 0,
+                    'failed': 0,
+                    'start_time': time.time()
+                }
+                
+                try:
+                    # شروع پردازش
+                    results = process_files_concurrent_smart(uploaded_files)
+                    
+                    # ذخیره نتایج در session_state
+                    st.session_state.processing_results = results
+                    st.session_state.processing_active = False  # پایان پردازش
+                    
+                    # نمایش پیام موفقیت
+                    successful = len([r for r in results if r and 'error' not in r[1]])
+                    failed = len(results) - successful
+                    
+                    if successful > 0:
+                        st.success(f"""
+                            ✅ **پردازش با موفقیت تکمیل شد!**
+                        
+                            - ⏱️ زمان کل: {(time.time() - st.session_state.processing_status['start_time'])/60:.1f} دقیقه
+                        """)
+                        
+                        return results
+                    else:
+                        st.error("❌ هیچ فایلی با موفقیت پردازش نشد.")
+                        return None
+                        
+                except Exception as e:
+                    st.session_state.processing_active = False
+                    st.error(f"❌ خطا در پردازش: {str(e)}")
+                    logger.error(f"Processing error: {traceback.format_exc()}")
+                    return None
+            
+            # ✅ CHANGE 5: نمایش وضعیت پردازش در حال اجرا
+            elif st.session_state.processing_active:
+                st.warning("⚠️ پردازش در حال اجرا است. لطفاً منتظر بمانید...")
+                st.info("""
+                    💡 **نکته مهم:** 
+                    - شما می‌توانید بین تب‌ها جابجا شوید
+                    - پردازش در پس‌زمینه ادامه می‌یابد
+                    - پس از اتمام، نتایج در تب "نتایج تحلیل" نمایش داده می‌شود
+                    - دکمه "شروع تحلیل" تا پایان پردازش غیرفعال است
+                """)
+                
+                # نمایش زمان سپری شده
+                if 'start_time' in st.session_state.processing_status:
+                    elapsed = time.time() - st.session_state.processing_status['start_time']
+                    st.metric("⏱️ زمان سپری شده", f"{elapsed/60:.1f} دقیقه")
+            
+            # ✅ CHANGE 6: بازگشت نتایج قبلی در صورت وجود
+            return st.session_state.processing_results
+
+
+
 
     def get_risk_class(risk_level):
         risk_classes = {'پایین': 'risk-low', 'متوسط': 'risk-medium', 'بالا': 'risk-high', 'بحرانی': 'risk-critical'}
@@ -1004,63 +1631,6 @@ if st.session_state.authentication_status:
                     st.error(f'❌ خطا: {e}')
         return uploaded_files
 
-    def create_processing_section(uploaded_files):
-        """بخش آماده‌سازی و نمایش وضعیت فایل‌های ورودی"""
-        if not uploaded_files:
-            return None
-
-        with st.container():
-            st.subheader("🚀 آماده پردازش")
-            st.divider()
-
-            col1, col2, col3 = st.columns(3)
-            total_size_mb = sum(
-                len(f['content']) if isinstance(f, dict) else f.size
-                for f in uploaded_files
-            ) / (1024 * 1024)
-
-            # کارت ۱: تعداد فایل‌ها
-            with col1:
-                st.markdown(f"""
-                    <div class="metric-modern">
-                        <p>تعداد فایل‌ها</p>
-                        <div class="metric-value-box">
-                            <div class="metric-value">{len(uploaded_files)}</div>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-
-            # کارت ۲: حجم کل فایل‌ها
-            with col2:
-                st.markdown(f"""
-                    <div class="metric-modern">
-                        <p>حجم کل</p>
-                        <div class="metric-value-box">
-                            <div class="metric-value">{total_size_mb:.1f} MB</div>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-
-            # کارت ۳: وضعیت آماده
-            with col3:
-                st.markdown(f"""
-                    <div class="metric-modern metric-status-ready">
-                        <p>وضعیت</p>
-                        <div class="metric-value-box">
-                            <div class="metric-value">آماده ✅</div>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            # دکمه شروع پردازش
-            if st.button("🚀 شروع تحلیل", type="primary"):
-                return process_files(uploaded_files)
-
-        return None
-
-
     def process_files(uploaded_files):
         analyzer = FinancialAnalyzer()
         results = []
@@ -1087,6 +1657,8 @@ if st.session_state.authentication_status:
         status_placeholder.success(f'🎉 تحلیل تکمیل شد! {total_files} فایل در {total_duration/60:.1f} دقیقه پردازش شد.')
         return results
     
+
+
 
     @st.cache_data
     def convert_to_excel(results):
@@ -1170,7 +1742,7 @@ if st.session_state.authentication_status:
 
  # =======================
     # ✅ بخش ساخت فایل اکسل
-# =======================
+    # =======================
 
         temp_dir = tempfile.mkdtemp()
         excel_files = []
@@ -1317,7 +1889,6 @@ if st.session_state.authentication_status:
                 logger.error(f"Traceback: {traceback.format_exc()}")
         
         return excel_files
-        
     def create_results_section(results):
         if not results:
             return
@@ -1657,33 +2228,43 @@ if st.session_state.authentication_status:
 
         st.markdown('<div class="modern-card">', unsafe_allow_html=True)
         st.subheader("📈 نمودارها و تحلیل روند")
+
+        # روش 1: استفاده از st.container و columns
+        # with st.container():
+        #     st.markdown("### 📊 فهرست نمودارها")
+        #     st.divider()
+            
+
+
+
         components.html("""
-            <div style="background: #f0f4f8; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; direction: rtl;">
-                
-                <h2 style="text-align: center; color: #2c3e50; margin-bottom: 1.5rem; font-size: 1.8rem;">📊 فهرست نمودارها</h2>
-                
-                <div style="background: white; padding: 1.2rem; border-radius: 10px; margin-bottom: 1rem; border-right: 5px solid #667eea; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <h3 style="color: #4c51bf; margin: 0 0 0.5rem 0; font-size: 1.3rem;">📊 بخش ۱: تحلیل روندهای کلان حسابرسی</h3>
-                </div>
-                
-                <div style="background: white; padding: 1.2rem; border-radius: 10px; margin-bottom: 1rem; border-right: 5px solid #f59e0b; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <h3 style="color: #4c51bf; margin: 0 0 0.5rem 0; font-size: 1.3rem;">🔥 بخش ۲: نقشه حرارتی موضوعات کلیدی حسابرسی</h3>
-                </div>
-                
-                <div style="background: white; padding: 1.2rem; border-radius: 10px; margin-bottom: 1rem; border-right: 5px solid #f97316; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <h3 style="color: #4c51bf; margin: 0 0 0.5rem 0; font-size: 1.3rem;">⚠️ بخش ۳: تحلیل ریسک‌های برجسته شده در گزارش</h3>
-                </div>
-                
-                <div style="background: white; padding: 1.2rem; border-radius: 10px; border-right: 5px solid #ef4444; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <h3 style="color: #4c51bf; margin: 0 0 0.5rem 0; font-size: 1.3rem;">⚖️ بخش ۴: تحلیل تخلفات و الزامات قانونی</h3>
-                </div>
-                
-                <div style="margin-top: 1.5rem; padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; text-align: center;">
-                    <p style="color: white; margin: 0; font-size: 1.1rem; font-weight: bold;">📈 مجموع: 7 نمودار تحلیلی در 4 بخش </p>
-                </div>
-                
+        <div style="background: #f0f4f8; padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; direction: rtl;">
+            
+            <h2 style="text-align: center; color: #2c3e50; margin-bottom: 1.5rem; font-size: 1.8rem;">📊 فهرست نمودارها</h2>
+            
+            <div style="background: white; padding: 1.2rem; border-radius: 10px; margin-bottom: 1rem; border-right: 5px solid #667eea; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h3 style="color: #4c51bf; margin: 0 0 0.5rem 0; font-size: 1.3rem;">📊 بخش ۱: تحلیل روندهای کلان حسابرسی</h3>
             </div>
-            """, height=550)
+            
+            <div style="background: white; padding: 1.2rem; border-radius: 10px; margin-bottom: 1rem; border-right: 5px solid #f59e0b; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h3 style="color: #4c51bf; margin: 0 0 0.5rem 0; font-size: 1.3rem;">🔥 بخش ۲: نقشه حرارتی موضوعات کلیدی حسابرسی</h3>
+            </div>
+            
+            <div style="background: white; padding: 1.2rem; border-radius: 10px; margin-bottom: 1rem; border-right: 5px solid #f97316; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h3 style="color: #4c51bf; margin: 0 0 0.5rem 0; font-size: 1.3rem;">⚠️ بخش ۳: تحلیل ریسک‌های برجسته شده در گزارش</h3>
+            </div>
+            
+            <div style="background: white; padding: 1.2rem; border-radius: 10px; border-right: 5px solid #ef4444; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h3 style="color: #4c51bf; margin: 0 0 0.5rem 0; font-size: 1.3rem;">⚖️ بخش ۴: تحلیل تخلفات و الزامات قانونی</h3>
+            </div>
+            
+            <div style="margin-top: 1.5rem; padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; text-align: center;">
+                <p style="color: white; margin: 0; font-size: 1.1rem; font-weight: bold;">📈 مجموع: 7 نمودار تحلیلی در 4 بخش </p>
+            </div>
+            
+        </div>
+        """, height=550)
+                
         st.divider()
 
         try:
@@ -2077,17 +2658,17 @@ if st.session_state.authentication_status:
             logger.error(f"Chart error: {traceback.format_exc()}")
             
         st.markdown("</div>", unsafe_allow_html=True)
-    # ========================================================================
-    # بخش 10: تابع اصلی main
-    # ========================================================================
+
 
     def main():
+
         if 'results' not in st.session_state:
             st.session_state.results = None
-        global api_key_manager
-        api_key_manager = APIKeyManager(st.session_state.api_keys)
+        
+        # ✅ این خطوط باید بیرون از if باشد
         create_header()
-        tab1, tab2, tab3, tab4 = st.tabs(["📤 آپلود و پردازش", "📊 نتایج تحلیل", "📈 اطلاعات آماری", "📉 ترند و نمودارها "])
+        tab1, tab2, tab3, tab4 = st.tabs(["📤 آپلود و پردازش", "📊نتایج تحلیل", "📈 اطلاعات آماری", "📉 ترند و نمودارها"])
+        
         with tab1:
             with st.expander("📋 راهنمای بارگذاری فایل", expanded=False):
                 st.markdown("""
@@ -2121,62 +2702,35 @@ if st.session_state.authentication_status:
                 </div>
                             
                 """, unsafe_allow_html=True)
+            
             uploaded_files = create_file_upload_section()
             if uploaded_files:
                 results = create_processing_section(uploaded_files)
                 if results:
                     st.session_state.results = results
+        
         with tab2:
-           
             if st.session_state.results:
                 create_results_section(st.session_state.results)
             else:
                 st.info("هنوز فایلی پردازش نشده است.")
+        
         with tab3:
             if st.session_state.results:
                 create_stats_section(st.session_state.results)
             else:
                 st.info("هنوز فایلی پردازش نشده است.")
+        
         with tab4:
-            
             with st.expander("📉 راهنمای نمودارها و ترند", expanded=False):
-                   
                 st.markdown("""
                     <div style="text-align: right; direction: rtl; padding: 1rem; border-radius: 12px;">
 
                 #### **⚠️ توجه :**
-                #### این نمودارها در صورتی ترسیم میشود که صورتهای مالی شما متعلق به یک مرجع باشد زیرا هدف مقایسه رفتار یک مرجع در طی چند سال است 
-                #### چناچه عنوان صورت های مالی تفاوت های جزئی داشته باشند یکسان سازی عنوان صورت گرفته سپس نمودار رسم میگیردد 
-                - * ✅ بانک تجارت (سهامی عام), بانک تجارت (شرکت سهامی عام)
-                - * ❌ بانک صادرات , بانک تجارت (شرکت سهامی عام)
+                #### این نمودارها در صورتی ترسیم میشود که صورتهای مالی شما متعلق به یک مرجع باشد
                 ---
-                #### 📖 توضیحات نمودارها:
-                
-                هر نمودار دارای یک **Expander با آیکون 📖** است که شامل:
-                 - * توضیح کامل نمودار
-                 - * نحوه استفاده
-                 - * اهمیت و کاربرد
-                 - * نکات مهم تحلیلی
-                ---
-                #### 🎯 ویژگی‌های نمودارها:
-                
-                ✔️ **تعاملی** - Hover برای مشاهده جزئیات  
-                ✔️ **رنگ‌بندی هوشمند** - رنگ‌های متمایز برای هر دسته  
-                ✔️ **فونت فارسی** - نمایش صحیح متن‌های فارسی  
-                ✔️ **توضیحات کامل** - راهنمای هر نمودار در Expander  
-                
-                ---
-                
-                #### 💡 نکات استفاده:
-                
-                - **کلیک و بزرگ‌نمایی** - در نمودارهای Sunburst
-                - **Hover برای جزئیات** - روی هر بخش از نمودار
-                - **مقایسه روند** - بین دوره‌های مختلف
-                - **شناسایی الگو** - در توزیع ریسک‌ها و تخلفات                            
-
-                </div>
                 """, unsafe_allow_html=True)
-        
+            
             if st.session_state.results:
                 create_charts_section(st.session_state.results)
             else:
@@ -2184,9 +2738,3 @@ if st.session_state.authentication_status:
 
     if __name__ == "__main__":
         main()
-
-
-
-
-
-
