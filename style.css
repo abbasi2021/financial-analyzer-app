@@ -1,15 +1,10 @@
-/* ==================== فونت‌ها و تنظیمات پایه ==================== */
-/* @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
-@font-face { 
-    font-family: 'B Mitra'; 
-    src: url('data:font/woff2;base64,') format('woff2'); 
-} */
 
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 /* BMitra Custom Font by fontchi.com */
 @font-face {
     font-family: 'B Mitra';
-    src: url('fonts/BMitra.woff2') format('woff2'),
-         url('fonts/BMitra.ttf') format('truetype');
+    src: url('fonts/BMITRA.woff2') format('woff2'),
+         url('fonts/B Mitra_0.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
 }
@@ -23,12 +18,12 @@
 
 /* ==================== اصلاح فونت سراسری ==================== */
 * {
-    font-family: 'B Mitra', sans-serif !important;
+    font-family:  'B Mitra',sans-serif,'Material Icons'  !important;
 }
 
 /* مخصوص عناصر داخلی Streamlit */
-div, p, span, label, input, textarea, button, select, option, h1, h2, h3, h4, h5, h6 {
-    font-family: 'B Mitra', sans-serif !important;
+body,div, p, span, label, input, textarea, button, select, option, h1, h2, h3, h4, h5, h6 {
+    font-family: 'B Mitra', sans-serif,'Material Icons' !important;
 }
 
 /* مخصوص تب‌ها، دکمه‌ها و عناصر خاص */
@@ -40,7 +35,7 @@ div, p, span, label, input, textarea, button, select, option, h1, h2, h3, h4, h5
 [data-testid="stTextInput"],
 [data-testid="stTextArea"],
 [data-testid="stSelectbox"] {
-    font-family: 'B Mitra', sans-serif !important;
+    font-family: 'B Mitra','', sans-serif !important;
 }
 
 /* مخصوص جدول‌ها */
@@ -86,7 +81,7 @@ table, th, td {
 
 /* ==================== تنظیمات عمومی صفحه ==================== */
 body { 
-    font-family: 'B Mitra'; 
+   
     background: var(--bg-main);
     direction: rtl;
 }
@@ -352,8 +347,10 @@ button div p {
 }
 
 
-/* ==================کارت‌های آماری تب سوم -  ==================== */
+/* ==================== کارت‌های آماری تب سوم - مدرن ==================== */
+/* ==================== کارت‌های آماری تب سوم - طراحی نهایی ==================== */
 
+/* ==================== کارت‌های آماری تب سوم - طراحی نهایی (نسخه 2) ==================== */
 
 /* ساختار اصلی کارت جدید (v2) */
 .stat-card-v2 {
