@@ -1533,7 +1533,7 @@ if st.session_state.authentication_status:
                                                 "نسبت کفایت سرمایه",
                                                 "معاملات با اشخاص وابسته",
                                                 "تداوم فعالیت",
-                                                "انطباق با مقررات ضدپولشویی (AML/CFT)"
+                                                "انطباق با مقررات ضدپولشویی (AML/CFT)",
 
                                                 # # ⚙️ اولویت متوسط
                                                 "ذخیره مزایای پایان خدمت کارکنان",
@@ -3070,4 +3070,5 @@ if st.session_state.authentication_status:
 
     if __name__ == "__main__":
         main()
+
 
