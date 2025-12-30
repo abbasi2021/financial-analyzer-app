@@ -1,0 +1,4 @@
+.env
+config.yaml
+app_log.txt
+__pycache__/
