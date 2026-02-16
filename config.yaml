@@ -9,6 +9,9 @@ credentials:
     h.khandani:
       name: Hossein Khandani
       password:  'placeholder'
+    m.masjedi:
+      name: MohamadHossein masjedi
+      password:  'placeholder'
 
 cookie:
   expiry_days: 1
