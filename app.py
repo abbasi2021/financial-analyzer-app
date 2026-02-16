@@ -127,6 +127,8 @@ hashed_passwords = stauth.Hasher(["elnagh", "abc_fin_cba","123"]).generate()
 config['credentials']['usernames']['admin']['password'] = hashed_passwords[0]
 config['credentials']['usernames']['fin.analyst']['password'] = hashed_passwords[1]
 config['credentials']['usernames']['h.khandani']['password'] = hashed_passwords[2]
+config['credentials']['usernames']['m.masjedi']['password'] = hashed_passwords[3]
+
 
 authenticator = stauth.Authenticate(
     config['credentials'],
